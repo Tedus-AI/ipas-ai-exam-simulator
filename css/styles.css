@@ -819,6 +819,7 @@ select.input { appearance: none; background-image: url("data:image/svg+xml,%3Csv
 }
 
 /* ─── A4 閱讀模態 ─── */
+.reader[hidden] { display: none !important; }   /* ← 修正：hidden 屬性必須優先於 display:flex */
 .reader {
   position: fixed; inset: 0; z-index: 60;
   display: flex; flex-direction: column;
