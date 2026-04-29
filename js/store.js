@@ -2,7 +2,7 @@
 // 儲存層：Firebase Firestore（線上）/ IndexedDB（離線 fallback）
 // 介面對外一致，內部根據設定切換
 // ============================================================
-import { STORAGE_KEYS } from './config.js';
+import { STORAGE_KEYS, DEFAULT_FIREBASE_CONFIG } from './config.js';
 
 const DB_NAME = 'ipas-exam-sim';
 const DB_VER  = 1;
@@ -69,13 +69,15 @@ let _fbDb  = null;
 let _fbStatus = 'disabled';   // 'disabled' | 'connected' | 'error'
 
 function getFbConfig() {
+  // 優先用 localStorage 覆蓋（讓進階使用者可以指向自己的專案），否則用內建預設
   const raw = localStorage.getItem(STORAGE_KEYS.fbConfig) || '';
-  if (!raw.trim()) return null;
-  try {
-    return JSON.parse(raw);
-  } catch {
-    return null;
+  if (raw.trim()) {
+    try { return JSON.parse(raw); } catch { /* fall through to default */ }
   }
+  if (DEFAULT_FIREBASE_CONFIG && DEFAULT_FIREBASE_CONFIG.apiKey) {
+    return DEFAULT_FIREBASE_CONFIG;
+  }
+  return null;
 }
 
 export async function initFirebase() {

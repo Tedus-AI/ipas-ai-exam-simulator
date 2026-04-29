@@ -335,21 +335,14 @@
 
         <section class="settings-section">
           <h3 class="h3">Firebase Firestore</h3>
-          <p class="muted small">用於儲存教材整理結果與題庫，可跨裝置同步。沒有 Firebase 也能單機使用（自動 fallback 到本機 IndexedDB）。</p>
+          <p class="muted small">已內建 Firebase 連線，可跨裝置同步教材與題庫。如果 Firestore 無法連線會自動 fallback 到本機 IndexedDB。下方欄位**留空即用內建設定**；想串自己的專案才貼上 JSON 覆蓋。</p>
           <div class="field">
-            <label class="field__label" for="fbConfig">Firebase Config（貼上整段 JSON）</label>
-            <textarea id="fbConfig" class="input input--ta" rows="8" placeholder='{
-  "apiKey": "...",
-  "authDomain": "...",
-  "projectId": "...",
-  "storageBucket": "...",
-  "messagingSenderId": "...",
-  "appId": "..."
-}'></textarea>
+            <label class="field__label" for="fbConfig">自訂 Firebase Config（選填，貼上 JSON 可覆蓋預設）</label>
+            <textarea id="fbConfig" class="input input--ta" rows="6" placeholder="留空 = 使用內建專案 (ipas-ai-exam-simulator)"></textarea>
           </div>
           <div class="row">
             <button class="btn btn--ghost btn--sm" id="fbTest">測試連線</button>
-            <button class="btn btn--ghost btn--sm btn--danger" id="fbReset">清除設定</button>
+            <button class="btn btn--ghost btn--sm btn--danger" id="fbReset">恢復預設</button>
           </div>
         </section>
 

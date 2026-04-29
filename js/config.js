@@ -8,6 +8,19 @@ export const STORAGE_KEYS = {
   theme:       'ipas.theme',
 };
 
+// ── 內建 Firebase 設定 ──────────────────────────────
+// Web API Key 不是密鑰（見 https://firebase.google.com/docs/projects/api-keys ），
+// 安全完全靠 Firestore Rules，所以直接打包進前端是 OK 的。
+// 使用者若想串自己的專案，可以在「設定」抽屜貼上 JSON 蓋掉預設。
+export const DEFAULT_FIREBASE_CONFIG = {
+  apiKey: "AIzaSyArw6eEWZD5cS4g4p5q0pSIte0GECeRHGo",
+  authDomain: "ipas-ai-exam-simulator.firebaseapp.com",
+  projectId: "ipas-ai-exam-simulator",
+  storageBucket: "ipas-ai-exam-simulator.firebasestorage.app",
+  messagingSenderId: "37375272595",
+  appId: "1:37375272595:web:029d2d32028657dadb0f66"
+};
+
 export const LEVELS = {
   junior:       { id: 'junior',       label: '初級' },
   intermediate: { id: 'intermediate', label: '中級' },

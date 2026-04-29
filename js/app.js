@@ -126,7 +126,7 @@ function initSettingsForm() {
   fbResetBtn.addEventListener('click', () => {
     fbInput.value = '';
     localStorage.removeItem(STORAGE_KEYS.fbConfig);
-    toast('已清除 Firebase 設定（重新整理頁面後生效）', 'ok');
+    toast('已恢復為內建 Firebase 設定（重新整理頁面後生效）', 'ok');
   });
 }
 

@@ -85,15 +85,16 @@ if ([string]::IsNullOrWhiteSpace($staged)) {
     Write-Host "   [OK] commit 完成" -ForegroundColor Green
 }
 
-# 設定 / 更新 remote
-$existingRemote = git remote get-url origin 2>$null
-if ($existingRemote) {
+# 設定 / 更新 remote (用 git remote 列表判斷，避免 ErrorActionPreference 被觸發)
+$remotes = & git remote 2>$null
+if ($LASTEXITCODE -eq 0 -and ($remotes -split "`n") -contains 'origin') {
     Write-Host "-> 更新 remote origin -> $remoteUrl" -ForegroundColor Cyan
-    git remote set-url origin $remoteUrl
+    & git remote set-url origin $remoteUrl
 } else {
     Write-Host "-> 加入 remote origin -> $remoteUrl" -ForegroundColor Cyan
-    git remote add origin $remoteUrl
+    & git remote add origin $remoteUrl
 }
+$LASTEXITCODE = 0   # reset，避免下面誤判
 
 # Push
 Write-Host ""
@@ -128,8 +129,4 @@ Write-Host ""
 
 # 自動開啟 Settings 頁面
 $openSettings = Read-Host "現在自動幫你開啟 Settings/Pages 頁面? (Y/N)"
-if ($openSettings -eq "Y" -or $openSettings -eq "y") {
-    Start-Process "https://github.com/$ghUser/$repoName/settings/pages"
-}
-
-Read-Host "按 Enter 離開"
+if ($ope
