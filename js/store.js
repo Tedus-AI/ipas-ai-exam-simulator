@@ -69,15 +69,16 @@ let _fbDb  = null;
 let _fbStatus = 'disabled';   // 'disabled' | 'connected' | 'error'
 
 function getFbConfig() {
-  // 優先用 localStorage 覆蓋（讓進階使用者可以指向自己的專案），否則用內建預設
-  const raw = localStorage.getItem(STORAGE_KEYS.fbConfig) || '';
-  if (raw.trim()) {
-    try { return JSON.parse(raw); } catch { /* fall through to default */ }
-  }
+  // 一律使用內建設定（不再支援 localStorage 覆蓋）
   if (DEFAULT_FIREBASE_CONFIG && DEFAULT_FIREBASE_CONFIG.apiKey) {
     return DEFAULT_FIREBASE_CONFIG;
   }
   return null;
+}
+
+// 對外提供 projectId，給 UI 顯示
+export function getFirebaseProjectId() {
+  return DEFAULT_FIREBASE_CONFIG?.projectId || '';
 }
 
 export async function initFirebase() {

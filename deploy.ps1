@@ -129,4 +129,8 @@ Write-Host ""
 
 # 自動開啟 Settings 頁面
 $openSettings = Read-Host "現在自動幫你開啟 Settings/Pages 頁面? (Y/N)"
-if ($ope
+if ($openSettings -eq "Y" -or $openSettings -eq "y") {
+    Start-Process "https://github.com/$ghUser/$repoName/settings/pages"
+}
+
+Read-Host "按 Enter 離開"

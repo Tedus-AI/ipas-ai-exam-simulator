@@ -316,33 +316,45 @@
 
       <div class="drawer__body">
         <section class="settings-section">
-          <h3 class="h3">Gemini API</h3>
-          <p class="muted small">本工具採 BYOK（Bring Your Own Key），金鑰僅儲存在你的瀏覽器 localStorage，不會上傳。</p>
+          <h3 class="h3">Google AI 模型</h3>
+          <p class="muted small">使用 Google AI Studio 的 API（Gemma 系列）。BYOK 金鑰僅儲存在你的瀏覽器 localStorage，不會上傳。</p>
           <div class="field">
             <label class="field__label" for="geminiKey">API Key</label>
-            <input id="geminiKey" type="password" class="input" placeholder="貼上你的 Gemini API Key" autocomplete="off" />
+            <input id="geminiKey" type="password" class="input" placeholder="貼上你的 Google AI Studio API Key" autocomplete="off" />
             <p class="muted small">前往 <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio</a> 取得免費金鑰。</p>
           </div>
           <div class="field">
             <label class="field__label" for="geminiModel">模型</label>
             <select id="geminiModel" class="input">
-              <option value="gemini-2.5-flash">gemini-2.5-flash（推薦，速度快）</option>
-              <option value="gemini-2.5-pro">gemini-2.5-pro（品質高）</option>
-              <option value="gemini-2.0-flash">gemini-2.0-flash</option>
+              <option value="gemma-4-26b-a4b-it">Gemma 4 26B A4B IT（推薦，MoE 架構速度快）</option>
+              <option value="gemma-4-31b-it">Gemma 4 31B IT（密集型，品質較高）</option>
             </select>
+            <p class="muted small">兩款都支援 256K 輸入 / 32K 輸出 / Thinking 模式。</p>
+          </div>
+
+          <div class="field">
+            <label class="field__label">免費版額度（今日）</label>
+            <div id="usagePanel" class="usage-panel">載入中…</div>
+            <p class="muted small">每模型獨立計算：每分鐘 15 次、每天 1500 次。超出時會自動等待重試。</p>
           </div>
         </section>
 
         <section class="settings-section">
           <h3 class="h3">Firebase Firestore</h3>
-          <p class="muted small">已內建 Firebase 連線，可跨裝置同步教材與題庫。如果 Firestore 無法連線會自動 fallback 到本機 IndexedDB。下方欄位**留空即用內建設定**；想串自己的專案才貼上 JSON 覆蓋。</p>
+          <p class="muted small">已內建 Firebase 連線設定，自動同步教材與題庫到雲端。如果 Firestore 暫時連不上，會自動使用本機 IndexedDB 確保功能正常。</p>
           <div class="field">
-            <label class="field__label" for="fbConfig">自訂 Firebase Config（選填，貼上 JSON 可覆蓋預設）</label>
-            <textarea id="fbConfig" class="input input--ta" rows="6" placeholder="留空 = 使用內建專案 (ipas-ai-exam-simulator)"></textarea>
+            <label class="field__label">連線狀態</label>
+            <div id="fbStatusBox" class="status-box status-box--checking">
+              <span class="status-box__led"></span>
+              <span class="status-box__txt">檢查中…</span>
+            </div>
+          </div>
+          <div class="field">
+            <label class="field__label">專案 ID</label>
+            <div class="field__value" id="fbProjectId">—</div>
           </div>
           <div class="row">
-            <button class="btn btn--ghost btn--sm" id="fbTest">測試連線</button>
-            <button class="btn btn--ghost btn--sm btn--danger" id="fbReset">恢復預設</button>
+            <button class="btn btn--ghost btn--sm" id="fbTest">重新測試連線</button>
           </div>
         </section>
 
