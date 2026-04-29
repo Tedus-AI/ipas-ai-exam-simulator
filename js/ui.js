@@ -49,6 +49,56 @@ export function bindSegmented(container, selector, onChange) {
   });
 }
 
+/* ─── A4 閱讀模態 ─── */
+let _readerInited = false;
+export function initReader() {
+  if (_readerInited) return;
+  _readerInited = true;
+  const modal = document.getElementById('readerModal');
+  if (!modal) return;
+
+  // 關閉按鈕
+  modal.querySelectorAll('[data-close]').forEach(el =>
+    el.addEventListener('click', closeReader)
+  );
+
+  // ESC 關閉
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && !modal.hidden) closeReader();
+  });
+
+  // 列印
+  document.getElementById('readerPrint')?.addEventListener('click', () => window.print());
+
+  // 複製全文
+  document.getElementById('readerCopy')?.addEventListener('click', async () => {
+    const md = modal.dataset.markdown || '';
+    const ok = await copyToClipboard(md);
+    toast(ok ? '已複製全文' : '複製失敗', ok ? 'ok' : 'err');
+  });
+}
+
+export function openReader({ title, level, markdown }) {
+  initReader();
+  const modal = document.getElementById('readerModal');
+  document.getElementById('readerTitle').textContent = title || '教材';
+  document.getElementById('readerLevel').textContent = level || '';
+  document.getElementById('readerContent').innerHTML = renderMarkdown(markdown || '');
+  modal.dataset.markdown = markdown || '';
+  modal.hidden = false;
+  document.body.style.overflow = 'hidden';
+
+  // 捲到最上面
+  modal.querySelector('.reader__scroll')?.scrollTo({ top: 0, behavior: 'auto' });
+}
+
+export function closeReader() {
+  const modal = document.getElementById('readerModal');
+  if (!modal) return;
+  modal.hidden = true;
+  document.body.style.overflow = '';
+}
+
 /* ─── Drawer (settings) ─── */
 export function initDrawer() {
   const drawer = document.getElementById('settingsDrawer');

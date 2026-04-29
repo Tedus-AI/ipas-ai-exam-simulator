@@ -7,8 +7,10 @@ import { saveMaterial, listMaterials, deleteMaterial } from './store.js';
 import { PROMPTS } from './config.js';
 import {
   bindDropzone, setProgress, toast, bindSegmented,
-  renderMarkdown, copyToClipboard, esc, confirmAction
+  renderMarkdown, copyToClipboard, esc, confirmAction,
+  openReader,
 } from './ui.js';
+import { LEVELS } from './config.js';
 
 let state = {
   level: 'junior',
@@ -33,6 +35,17 @@ export function init() {
 
   // 分析按鈕
   document.getElementById('materialAnalyze').addEventListener('click', analyze);
+
+  // 閱讀模式
+  document.getElementById('materialReader').addEventListener('click', () => {
+    if (!state.result) return;
+    const title = state.file?.name?.replace(/\.[^.]+$/, '') || '教材整理結果';
+    openReader({
+      title,
+      level: LEVELS[state.level]?.label || '',
+      markdown: state.result,
+    });
+  });
 
   // 複製 / 存檔
   document.getElementById('materialCopy').addEventListener('click', async () => {
@@ -91,7 +104,8 @@ async function analyze() {
       `<div class="md">${renderMarkdown(state.result)}</div>`;
     document.getElementById('materialCopy').disabled = false;
     document.getElementById('materialSave').disabled = false;
-    toast('整理完成！可以複製或存入教材庫', 'ok');
+    document.getElementById('materialReader').disabled = false;
+    toast('整理完成！按「閱讀模式」可全螢幕檢視', 'ok');
 
   } catch (e) {
     setProgress('materialProgress', null);
@@ -127,12 +141,12 @@ async function refreshList() {
       const id = el.dataset.id;
       const item = items.find(x => x.id === id);
       el.querySelector('[data-act="view"]').addEventListener('click', () => {
-        document.getElementById('materialResult').innerHTML =
-          `<div class="md">${renderMarkdown(item.content)}</div>`;
-        document.getElementById('materialCopy').disabled = false;
-        document.getElementById('materialSave').disabled = true;
-        state.result = item.content;
-        document.getElementById('materialResult').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        // 開全螢幕 A4 閱讀視窗
+        openReader({
+          title: item.title,
+          level: LEVELS[item.level]?.label || '',
+          markdown: item.content,
+        });
       });
       el.querySelector('[data-act="del"]').addEventListener('click', async () => {
         if (!confirmAction(`確定刪除「${item.title}」？`)) return;
