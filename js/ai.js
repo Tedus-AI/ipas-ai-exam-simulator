@@ -148,12 +148,15 @@ function parseRetryDelay(errText) {
 
 /**
  * 請 AI 回 JSON
+ * @param {string} prompt
+ * @param {Object} opts  覆蓋預設（如 maxOutputTokens）
  */
-export async function generateJSON(prompt) {
+export async function generateJSON(prompt, opts = {}) {
   const raw = await generate(prompt, {
     json: true,
     temperature: 0.2,
-    maxOutputTokens: 16384,
+    maxOutputTokens: 32768,   // 容納題目 + 詳解（每題可達 800-1200 tokens）
+    ...opts,
   });
   return parseJsonLoose(raw);
 }

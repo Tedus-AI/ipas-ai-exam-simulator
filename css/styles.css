@@ -818,6 +818,175 @@ select.input { appearance: none; background-image: url("data:image/svg+xml,%3Csv
   box-shadow: 0 0 0 3px rgba(177, 77, 58, .18);
 }
 
+/* ─── 題目解析預覽（Tab 2 解析預覽欄位） ─── */
+.preview-q {
+  padding: 14px 0;
+  border-bottom: 1px solid var(--line);
+}
+.preview-q:last-child { border-bottom: 0; }
+.preview-q__title { font-weight: 500; margin-bottom: 8px; line-height: 1.6; }
+.preview-q__opts {
+  display: flex; flex-direction: column; gap: 4px;
+  font-size: 13px; color: var(--ink-2);
+  margin-bottom: 8px;
+}
+.preview-q__opts .is-correct { color: var(--success); font-weight: 500; }
+.preview-q__exp {
+  margin-top: 8px;
+  padding: 10px 12px;
+  background: var(--bg-tint);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 6px 6px 0;
+  font-size: 13px;
+}
+.preview-q__exp summary {
+  cursor: pointer;
+  color: var(--accent-ink);
+  font-weight: 500;
+  user-select: none;
+}
+[data-theme="dark"] .preview-q__exp summary { color: var(--accent); }
+.preview-q__exp p  { margin: 8px 0 4px; line-height: 1.6; }
+.preview-q__exp ul { margin: 6px 0; padding-left: 20px; }
+.preview-q__exp li { margin: 4px 0; line-height: 1.6; }
+
+/* ─── 題庫瀏覽器 ─── */
+.qbrowser {
+  display: flex; flex-direction: column;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--bg-soft);
+  max-height: 500px;
+  overflow-y: auto;
+}
+.qbrow-item {
+  display: flex; gap: 12px; align-items: flex-start;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--line);
+  cursor: pointer;
+  transition: background .14s ease;
+}
+.qbrow-item:hover { background: var(--bg-tint); }
+.qbrow-item:last-child { border-bottom: 0; }
+.qbrow-item__num {
+  flex: 0 0 32px;
+  font-family: var(--font-serif);
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--accent);
+}
+.qbrow-item__body { flex: 1; min-width: 0; }
+.qbrow-item__q {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ink);
+  margin-bottom: 4px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.qbrow-item__meta {
+  font-size: 11.5px;
+  color: var(--ink-3);
+  display: flex; gap: 10px; align-items: center;
+}
+.qbrow-item__meta .has-exp { color: var(--success); }
+.qbrow-item__chev { color: var(--ink-3); font-size: 14px; }
+
+/* ─── 題目詳解 modal ─── */
+.qmodal[hidden] { display: none !important; }
+.qmodal {
+  position: fixed; inset: 0; z-index: 70;
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px;
+}
+.qmodal__backdrop {
+  position: absolute; inset: 0;
+  background: rgba(31, 30, 29, 0.5);
+  backdrop-filter: blur(3px);
+  animation: fade-in .2s ease;
+}
+.qmodal__panel {
+  position: relative;
+  width: min(720px, 100%);
+  max-height: 90vh;
+  background: var(--bg-elev);
+  border-radius: var(--r-lg);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-lg);
+  display: flex; flex-direction: column;
+  animation: reader-in .25s ease;
+  overflow: hidden;
+}
+.qmodal__head {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--line);
+  gap: 12px;
+}
+.qmodal__meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.qmodal__body {
+  flex: 1; overflow-y: auto;
+  padding: 22px 24px;
+}
+.qmodal__foot {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 12px 20px;
+  border-top: 1px solid var(--line);
+  background: var(--bg-soft);
+}
+
+/* qmodal 內容區塊樣式 */
+.qm-section {
+  margin-top: 18px;
+  padding: 14px 16px;
+  background: var(--bg-soft);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 var(--r-md) var(--r-md) 0;
+}
+.qm-section--ex {
+  background: var(--accent-soft);
+  border-left-color: var(--accent);
+}
+[data-theme="dark"] .qm-section--ex { background: rgba(217, 119, 87, 0.12); }
+.qm-section__title {
+  font-family: var(--font-serif);
+  font-weight: 600;
+  font-size: 14px;
+  margin: 0 0 8px;
+  color: var(--ink);
+  display: flex; align-items: center; gap: 6px;
+}
+.qm-section p { margin: 6px 0; line-height: 1.7; font-size: 14px; }
+.qm-section ul { margin: 8px 0; padding-left: 0; list-style: none; }
+.qm-section li {
+  padding: 8px 12px;
+  margin-bottom: 6px;
+  background: var(--bg-elev);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  font-size: 13.5px;
+  line-height: 1.65;
+}
+.qm-section li.is-correct {
+  border-color: var(--success);
+  background: var(--success-soft);
+}
+.qm-section li strong {
+  display: inline-block;
+  min-width: 22px;
+  color: var(--accent-ink);
+}
+[data-theme="dark"] .qm-section li strong { color: var(--accent); }
+
+/* 響應式 */
+@media (max-width: 640px) {
+  .qmodal { padding: 12px; }
+  .qmodal__body { padding: 16px; }
+  .card__head-actions { flex-wrap: wrap; }
+}
+
 /* ─── A4 閱讀模態 ─── */
 .reader[hidden] { display: none !important; }   /* ← 修正：hidden 屬性必須優先於 display:flex */
 .reader {

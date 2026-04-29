@@ -226,6 +226,27 @@
           <div class="stat"><span class="stat__num" id="statInter2">0</span><span class="stat__lbl">中級·科二</span></div>
         </div>
       </div>
+
+      <!-- 瀏覽題庫 -->
+      <div class="card" style="margin-top:20px">
+        <div class="card__head">
+          <h2 class="h2">瀏覽題庫</h2>
+          <div class="card__head-actions">
+            <div class="seg seg--mini">
+              <button class="seg__btn is-active" data-browse-level="junior">初級</button>
+              <button class="seg__btn" data-browse-level="intermediate">中級</button>
+            </div>
+            <div class="seg seg--mini">
+              <button class="seg__btn is-active" data-browse-subject="1">科一</button>
+              <button class="seg__btn" data-browse-subject="2">科二</button>
+            </div>
+            <input type="text" id="qbSearch" class="input" placeholder="搜尋關鍵字…" style="width:200px;padding:6px 12px;font-size:13px" />
+          </div>
+        </div>
+        <div class="qbrowser" id="qbBrowserList">
+          <div class="empty"><p>選擇級別與科目後將顯示題目清單。</p></div>
+        </div>
+      </div>
     </section>
 
     <!-- ============== Tab 3：模擬測驗 ============== -->
@@ -375,6 +396,31 @@
         <button class="btn btn--primary" id="settingsSave">儲存設定</button>
       </footer>
     </aside>
+  </div>
+
+  <!-- ============== 題目詳解 modal ============== -->
+  <div class="qmodal" id="qDetailModal" hidden>
+    <div class="qmodal__backdrop" data-close></div>
+    <div class="qmodal__panel">
+      <header class="qmodal__head">
+        <div class="qmodal__meta">
+          <span class="chip chip--strong" id="qmLevel">初級</span>
+          <span class="chip" id="qmSubject">科一</span>
+          <span class="muted small" id="qmIndex"></span>
+        </div>
+        <button class="iconbtn" data-close aria-label="關閉">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </header>
+      <div class="qmodal__body" id="qmBody"></div>
+      <footer class="qmodal__foot">
+        <button class="btn btn--ghost btn--sm" id="qmPrev">← 上一題</button>
+        <span class="muted small" id="qmCounter">1 / 1</span>
+        <button class="btn btn--ghost btn--sm" id="qmNext">下一題 →</button>
+      </footer>
+    </div>
   </div>
 
   <!-- ============== A4 閱讀模態 ============== -->

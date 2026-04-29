@@ -5,12 +5,13 @@ import { extractText, chunkText } from './parser.js';
 import { generateJSON } from './ai.js';
 import {
   addQuestions, countQuestions, clearAllQuestions,
-  exportAll, importAll
+  exportAll, importAll, listQuestions,
 } from './store.js';
 import { PROMPTS } from './config.js';
 import {
   bindDropzone, setProgress, toast, bindSegmented,
-  esc, downloadJSON, confirmAction
+  esc, downloadJSON, confirmAction,
+  showQuestionDetail,
 } from './ui.js';
 
 let state = {
@@ -18,6 +19,10 @@ let state = {
   subject: 1,
   file: null,
   parsed: [],
+  // 瀏覽題庫狀態
+  browseLevel: 'junior',
+  browseSubject: 1,
+  browseQuery: '',
 };
 
 export function init() {
@@ -72,7 +77,85 @@ export function init() {
     refreshStats();
   });
 
+  // 題庫瀏覽器：級別 / 科目切換
+  document.querySelectorAll('[data-browse-level]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      btn.parentElement.querySelectorAll('[data-browse-level]').forEach(b =>
+        b.classList.toggle('is-active', b === btn));
+      state.browseLevel = btn.dataset.browseLevel;
+      renderBrowser();
+    });
+  });
+  document.querySelectorAll('[data-browse-subject]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      btn.parentElement.querySelectorAll('[data-browse-subject]').forEach(b =>
+        b.classList.toggle('is-active', b === btn));
+      state.browseSubject = Number(btn.dataset.browseSubject);
+      renderBrowser();
+    });
+  });
+
+  // 搜尋（debounced）
+  let searchTimer;
+  document.getElementById('qbSearch')?.addEventListener('input', e => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => {
+      state.browseQuery = e.target.value.trim().toLowerCase();
+      renderBrowser();
+    }, 200);
+  });
+
   refreshStats();
+  renderBrowser();
+}
+
+async function renderBrowser() {
+  const wrap = document.getElementById('qbBrowserList');
+  if (!wrap) return;
+  wrap.innerHTML = `<div class="empty"><p>載入中…</p></div>`;
+  try {
+    const all = await listQuestions({
+      level: state.browseLevel,
+      subject: state.browseSubject,
+    });
+    let filtered = all;
+    if (state.browseQuery) {
+      filtered = all.filter(q =>
+        q.question?.toLowerCase().includes(state.browseQuery) ||
+        q.options?.some(o => o.toLowerCase().includes(state.browseQuery))
+      );
+    }
+    if (!filtered.length) {
+      wrap.innerHTML = `<div class="empty"><p>${
+        state.browseQuery ? '沒有符合的題目' : '此級別/科目尚無題目，請先到上方上傳考題 PDF'
+      }</p></div>`;
+      return;
+    }
+    const letters = ['A','B','C','D'];
+    wrap.innerHTML = filtered.map((q, i) => `
+      <div class="qbrow-item" data-i="${i}">
+        <div class="qbrow-item__num">${i + 1}</div>
+        <div class="qbrow-item__body">
+          <div class="qbrow-item__q">${esc(q.question)}</div>
+          <div class="qbrow-item__meta">
+            ${q.answer != null ? `<span>正解：${letters[q.answer]}</span>` : '<span>無答案</span>'}
+            ${q.explanation ? '<span class="has-exp">📝 含解析</span>' : '<span class="muted">無解析</span>'}
+            ${q.example ? '<span class="has-exp">💡 含舉例</span>' : ''}
+          </div>
+        </div>
+        <div class="qbrow-item__chev">›</div>
+      </div>
+    `).join('');
+
+    wrap.querySelectorAll('.qbrow-item').forEach(el => {
+      el.addEventListener('click', () => {
+        const idx = Number(el.dataset.i);
+        showQuestionDetail(filtered, idx);
+      });
+    });
+  } catch (e) {
+    wrap.innerHTML = `<div class="empty"><p>載入失敗：${esc(e.message)}</p></div>`;
+  }
 }
 
 async function analyze() {
@@ -103,13 +186,18 @@ async function analyze() {
 
     if (!all.length) throw new Error('AI 沒有抽出任何題目，請確認檔案內容');
 
-    // 規範化 + 顯示
+    // 規範化 + 顯示（含解析欄位）
     state.parsed = all.map(q => ({
       level: state.level,
       subject: state.subject,
       question: String(q.q || '').trim(),
       options: Array.isArray(q.o) ? q.o.slice(0, 4).map(x => String(x).trim()) : [],
       answer: typeof q.a === 'number' ? q.a : null,
+      explanation: String(q.exp || '').trim(),
+      optionsAnalysis: Array.isArray(q.opts)
+        ? q.opts.slice(0, 4).map(x => String(x).trim())
+        : [],
+      example: String(q.ex || '').trim(),
     })).filter(q => q.question && q.options.length === 4);
 
     setProgress('questionProgress', 92, `寫入題庫（${state.parsed.length} 題）…`);
@@ -135,19 +223,30 @@ function renderPreview() {
     return;
   }
   const letters = ['A','B','C','D'];
-  wrap.innerHTML = state.parsed.slice(0, 10).map((q, i) => `
-    <div style="padding:14px 0;border-bottom:1px solid var(--line)">
-      <div style="font-weight:500;margin-bottom:8px">${i+1}. ${esc(q.question)}</div>
-      <div style="display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--ink-2)">
+  wrap.innerHTML = state.parsed.slice(0, 5).map((q, i) => `
+    <div class="preview-q">
+      <div class="preview-q__title">${i+1}. ${esc(q.question)}</div>
+      <div class="preview-q__opts">
         ${q.options.map((o, idx) => `
-          <div style="${q.answer === idx ? 'color:var(--success);font-weight:500' : ''}">
-            ${letters[idx]}. ${esc(o)} ${q.answer === idx ? ' ✓' : ''}
+          <div class="${q.answer === idx ? 'is-correct' : ''}">
+            ${letters[idx]}. ${esc(o)}${q.answer === idx ? ' ✓' : ''}
           </div>
         `).join('')}
       </div>
+      ${q.explanation ? `
+        <details class="preview-q__exp">
+          <summary>📝 解析（點開）</summary>
+          <p>${esc(q.explanation)}</p>
+          ${q.optionsAnalysis?.length ? `
+            <ul>${q.optionsAnalysis.map((a, idx) =>
+              `<li><strong>${letters[idx]}.</strong> ${esc(a)}</li>`
+            ).join('')}</ul>` : ''}
+          ${q.example ? `<p class="muted small">💡 ${esc(q.example)}</p>` : ''}
+        </details>
+      ` : ''}
     </div>
-  `).join('') + (state.parsed.length > 10
-    ? `<div class="muted small" style="padding:12px 0;text-align:center">… 另 ${state.parsed.length - 10} 題已寫入題庫</div>` : '');
+  `).join('') + (state.parsed.length > 5
+    ? `<div class="muted small" style="padding:12px 0;text-align:center">… 另 ${state.parsed.length - 5} 題已寫入題庫，可到「瀏覽題庫」查看完整解析</div>` : '');
 }
 
 export async function refreshStats() {

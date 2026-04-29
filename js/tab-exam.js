@@ -3,7 +3,7 @@
 // ============================================================
 import { listQuestions } from './store.js';
 import { LEVELS, SUBJECTS, AI_PORTALS, PASS_RULE } from './config.js';
-import { toast, esc, copyToClipboard, confirmAction } from './ui.js';
+import { toast, esc, copyToClipboard, confirmAction, showQuestionDetail } from './ui.js';
 
 let state = {
   level: 'junior',
@@ -260,6 +260,7 @@ async function submitExam() {
           <div class="review-q__head">
             <span class="chip chip--strong">${SUBJECTS[q.subject]?.label || ''}</span>
             <span class="chip chip--err">第 ${i + 1} 題</span>
+            ${q.explanation || q.optionsAnalysis?.length ? '<span class="chip chip--ok">📝 含解析</span>' : ''}
           </div>
           <div class="q-stem" style="margin-bottom:12px">${esc(q.question)}</div>
           <div class="options">
@@ -274,8 +275,17 @@ async function submitExam() {
                 </div>`;
             }).join('')}
           </div>
+          ${q.explanation ? `
+            <div class="qm-section" style="margin-top:14px">
+              <h3 class="qm-section__title">📝 解析</h3>
+              <p>${esc(q.explanation)}</p>
+              ${q.optionsAnalysis?.length ? `
+                <div style="margin-top:8px">
+                  <button class="btn btn--ghost btn--sm" data-detail-qi="${i}">查看完整選項分析 →</button>
+                </div>` : ''}
+            </div>` : ''}
           <div class="ai-tools">
-            <span class="ai-tools__lbl">問 AI：</span>
+            <span class="ai-tools__lbl">${q.explanation ? '另外問 AI：' : '問 AI：'}</span>
             ${AI_PORTALS.map(p => `
               <button class="ai-btn" data-portal="${p.id}" data-qi="${i}">
                 <span class="ai-btn__icon ${p.cls}">${p.icon}</span>${p.label}
@@ -286,6 +296,16 @@ async function submitExam() {
       `).join('')}
     </div>
   `;
+
+  // 綁定「查看完整選項分析」→ 開詳解 modal
+  resultEl.querySelectorAll('[data-detail-qi]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = Number(btn.dataset.detailQi);
+      const wrongQuestions = wrong.map(w => state.questions[w.i]);
+      const cursor = wrong.findIndex(w => w.i === idx);
+      showQuestionDetail(wrongQuestions, Math.max(0, cursor));
+    });
+  });
 
   // 綁定 AI 跳轉
   resultEl.querySelectorAll('.ai-btn').forEach(btn => {

@@ -99,6 +99,121 @@ export function closeReader() {
   document.body.style.overflow = '';
 }
 
+/* ─── 題目詳解 modal ─── */
+let _qDetailInited = false;
+let _qDetailState = { list: [], cursor: 0 };
+
+export function initQDetailModal() {
+  if (_qDetailInited) return;
+  _qDetailInited = true;
+  const modal = document.getElementById('qDetailModal');
+  if (!modal) return;
+  modal.querySelectorAll('[data-close]').forEach(el =>
+    el.addEventListener('click', closeQDetail)
+  );
+  document.addEventListener('keydown', e => {
+    if (modal.hidden) return;
+    if (e.key === 'Escape')      closeQDetail();
+    if (e.key === 'ArrowLeft')   gotoQ(-1);
+    if (e.key === 'ArrowRight')  gotoQ(+1);
+  });
+  document.getElementById('qmPrev')?.addEventListener('click', () => gotoQ(-1));
+  document.getElementById('qmNext')?.addEventListener('click', () => gotoQ(+1));
+}
+
+/**
+ * 開啟題目詳解 modal
+ * @param {Array} list      題目陣列（顯示同批次中可前後翻頁）
+ * @param {number} cursor   起始顯示哪一題
+ */
+export function showQuestionDetail(list, cursor = 0) {
+  initQDetailModal();
+  _qDetailState.list = list;
+  _qDetailState.cursor = Math.max(0, Math.min(cursor, list.length - 1));
+  renderQDetail();
+  const modal = document.getElementById('qDetailModal');
+  modal.hidden = false;
+  document.body.style.overflow = 'hidden';
+}
+
+function closeQDetail() {
+  const modal = document.getElementById('qDetailModal');
+  if (!modal) return;
+  modal.hidden = true;
+  document.body.style.overflow = '';
+}
+
+function gotoQ(delta) {
+  const next = _qDetailState.cursor + delta;
+  if (next < 0 || next >= _qDetailState.list.length) return;
+  _qDetailState.cursor = next;
+  renderQDetail();
+}
+
+function renderQDetail() {
+  const q = _qDetailState.list[_qDetailState.cursor];
+  if (!q) return;
+  const letters = ['A','B','C','D'];
+  const total = _qDetailState.list.length;
+
+  const levelLabel = q.level === 'intermediate' ? '中級' : '初級';
+  const subjLabel  = q.subject === 2 ? '科目二 · 生成式 AI 應用與規劃' : '科目一 · 人工智慧基礎概論';
+  document.getElementById('qmLevel').textContent = levelLabel;
+  document.getElementById('qmSubject').textContent = subjLabel;
+  document.getElementById('qmIndex').textContent = total > 1 ? `第 ${_qDetailState.cursor + 1} 題` : '';
+  document.getElementById('qmCounter').textContent = `${_qDetailState.cursor + 1} / ${total}`;
+
+  document.getElementById('qmPrev').disabled = _qDetailState.cursor === 0;
+  document.getElementById('qmNext').disabled = _qDetailState.cursor === total - 1;
+
+  const body = document.getElementById('qmBody');
+  body.innerHTML = `
+    <div class="q-stem" style="margin-bottom:14px">${esc(q.question || '')}</div>
+    <div class="options" style="margin-bottom:6px">
+      ${q.options.map((o, i) => {
+        let cls = 'option';
+        if (q.answer === i) cls += ' is-correct';
+        return `
+          <div class="${cls}">
+            <span class="option__letter">${letters[i]}</span>
+            <span>${esc(o)}</span>
+          </div>`;
+      }).join('')}
+    </div>
+
+    ${q.explanation ? `
+      <div class="qm-section">
+        <h3 class="qm-section__title">📝 解析</h3>
+        <p>${esc(q.explanation)}</p>
+      </div>` : ''}
+
+    ${q.optionsAnalysis?.length ? `
+      <div class="qm-section">
+        <h3 class="qm-section__title">🔍 選項分析</h3>
+        <ul>
+          ${q.optionsAnalysis.map((a, i) => `
+            <li class="${q.answer === i ? 'is-correct' : ''}">
+              <strong>${letters[i]}.</strong> ${esc(a)}
+            </li>`).join('')}
+        </ul>
+      </div>` : ''}
+
+    ${q.example ? `
+      <div class="qm-section qm-section--ex">
+        <h3 class="qm-section__title">💡 舉例</h3>
+        <p>${esc(q.example)}</p>
+      </div>` : ''}
+
+    ${(!q.explanation && !q.optionsAnalysis?.length) ? `
+      <div class="muted small" style="text-align:center;padding:24px 0">
+        這題沒有存解析（可能是舊版本匯入或 AI 沒抽出）。<br>
+        建議重新從原始 PDF 解析以取得詳解。
+      </div>` : ''}
+  `;
+  // 捲到頂部
+  body.scrollTo({ top: 0, behavior: 'auto' });
+}
+
 /* ─── Drawer (settings) ─── */
 export function initDrawer() {
   const drawer = document.getElementById('settingsDrawer');
