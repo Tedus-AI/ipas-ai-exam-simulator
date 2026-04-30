@@ -109,7 +109,7 @@ export function init() {
   renderBrowser();
 }
 
-async function renderBrowser() {
+export async function renderBrowser() {
   const wrap = document.getElementById('qbBrowserList');
   if (!wrap) return;
   wrap.innerHTML = `<div class="empty"><p>載入中…</p></div>`;
@@ -171,53 +171,64 @@ async function analyze() {
 
     // 切小塊（20K 字 ≈ 5-8 題），每次呼叫快、即使失敗也只丟一小段
     const chunks = chunkText(text, 20000);
-    const all = [];
+    state.parsed = [];   // 清空累積（每塊存完都會更新）
+    let totalSaved = 0;
 
     for (let i = 0; i < chunks.length; i++) {
       const t0 = Date.now();
-      // 用計時器讓使用者知道還在跑
       const tick = setInterval(() => {
         const sec = Math.floor((Date.now() - t0) / 1000);
         setProgress('questionProgress',
           30 + (i / chunks.length) * 60,
-          `AI 抽取題目 ${i+1}/${chunks.length}（已等待 ${sec} 秒…）`);
+          `AI 抽取題目 ${i+1}/${chunks.length}（已等待 ${sec} 秒…已存 ${totalSaved} 題）`);
       }, 1000);
 
       try {
         const j = await generateJSON(PROMPTS.questions(chunks[i], state.subject));
-        if (Array.isArray(j.questions)) all.push(...j.questions);
+        clearInterval(tick);
+
+        if (Array.isArray(j.questions) && j.questions.length) {
+          // 規範化這一塊的題目
+          const chunkParsed = j.questions.map(q => ({
+            level: state.level,
+            subject: state.subject,
+            question: String(q.q || '').trim(),
+            options: Array.isArray(q.o) ? q.o.slice(0, 4).map(x => String(x).trim()) : [],
+            answer: typeof q.a === 'number' ? q.a : null,
+            explanation: String(q.exp || '').trim(),
+            optionsAnalysis: Array.isArray(q.opts)
+              ? q.opts.slice(0, 4).map(x => String(x).trim())
+              : [],
+            example: String(q.ex || '').trim(),
+          })).filter(q => q.question && q.options.length === 4);
+
+          if (chunkParsed.length) {
+            // 立即寫入題庫（這塊就先保住）
+            await addQuestions(chunkParsed);
+            state.parsed.push(...chunkParsed);
+            totalSaved += chunkParsed.length;
+
+            // 更新預覽 + 統計
+            renderPreview();
+            document.getElementById('questionCount').textContent = `${totalSaved} 題`;
+            await refreshStats();
+            toast(`第 ${i+1}/${chunks.length} 段已存 ${chunkParsed.length} 題`, 'ok', 2000);
+          }
+        }
       } catch (e) {
+        clearInterval(tick);
         console.warn('chunk', i, 'failed', e);
         toast(`第 ${i+1} 段解析失敗，已跳過：${e.message}`, 'warn', 4500);
-      } finally {
-        clearInterval(tick);
       }
     }
 
-    if (!all.length) throw new Error('AI 沒有抽出任何題目，請確認檔案內容');
+    if (!totalSaved) throw new Error('AI 沒有抽出任何題目，請確認檔案內容');
 
-    // 規範化 + 顯示（含解析欄位）
-    state.parsed = all.map(q => ({
-      level: state.level,
-      subject: state.subject,
-      question: String(q.q || '').trim(),
-      options: Array.isArray(q.o) ? q.o.slice(0, 4).map(x => String(x).trim()) : [],
-      answer: typeof q.a === 'number' ? q.a : null,
-      explanation: String(q.exp || '').trim(),
-      optionsAnalysis: Array.isArray(q.opts)
-        ? q.opts.slice(0, 4).map(x => String(x).trim())
-        : [],
-      example: String(q.ex || '').trim(),
-    })).filter(q => q.question && q.options.length === 4);
+    setProgress('questionProgress', 100, `完成 — 共 ${totalSaved} 題`);
+    toast(`全部完成！共新增 ${totalSaved} 題到題庫`, 'ok');
 
-    setProgress('questionProgress', 92, `寫入題庫（${state.parsed.length} 題）…`);
-    const n = await addQuestions(state.parsed);
-    setProgress('questionProgress', 100, '完成');
-
-    renderPreview();
-    document.getElementById('questionCount').textContent = `${n} 題`;
-    toast(`成功新增 ${n} 題到題庫`, 'ok');
-    refreshStats();
+    // 重新整理瀏覽器
+    renderBrowser();
   } catch (e) {
     toast('解析失敗：' + e.message, 'err', 5000);
   } finally {

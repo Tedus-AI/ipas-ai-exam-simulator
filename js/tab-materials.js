@@ -128,7 +128,7 @@ async function analyze() {
   }
 }
 
-async function refreshList() {
+export async function refreshList() {
   const wrap = document.getElementById('materialList');
   try {
     const items = await listMaterials(state.level);

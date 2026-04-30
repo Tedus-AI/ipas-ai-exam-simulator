@@ -49,6 +49,16 @@ async function boot() {
   await initFirebase();
   updateConnStatus();
 
+  // ★ Firebase 連線成功後重新載入清單（修 race condition）
+  // 因為 tab init 時 Firebase 還沒就緒，那次 refresh 只看到本機 IndexedDB（通常是空的）
+  try {
+    await tabMaterials.refreshList();
+    await tabQuestions.renderBrowser();
+    await tabQuestions.refreshStats();
+  } catch (e) {
+    console.warn('[boot] 重新載入清單失敗：', e);
+  }
+
   // 第一次使用時提示設定 API Key
   if (!ai.isConfigured()) {
     setTimeout(() => {
