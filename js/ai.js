@@ -63,8 +63,9 @@ export async function generate(prompt, opts = {}) {
     topK:            opts.topK            ?? MODEL_DEFAULTS.topK,
     maxOutputTokens: opts.maxOutputTokens ?? 8192,
   };
-  if (useJson)     generationConfig.responseMimeType = 'application/json';
-  if (useThinking) generationConfig.thinkingConfig   = { thinkingLevel: 'HIGH' };
+  // 註：Gemma 不支援 responseMimeType: 'application/json'，
+  // 改用 prompt 強制要求 JSON + parseJsonLoose 寬鬆解析
+  if (useThinking) generationConfig.thinkingConfig = { thinkingLevel: 'HIGH' };
 
   const body = {
     contents: [{ role: 'user', parts: [{ text: prompt }] }],
@@ -78,21 +79,39 @@ export async function generate(prompt, opts = {}) {
   recordCall(model);
   emitUsage();
 
+  // ── 90 秒超時保護，避免無限掛起 ──
+  const controller = new AbortController();
+  const timeoutMs = opts.timeoutMs ?? 90_000;
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  console.log(`[AI] 發送請求：model=${model}, json=${useJson}, thinking=${useThinking}, search=${useSearch}, prompt 長度=${prompt.length}`);
+  const t0 = Date.now();
+
   let res;
   try {
     res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
+      signal: controller.signal,
     });
+    clearTimeout(timeoutId);
+    console.log(`[AI] 收到回應：${res.status} ${res.statusText}（耗時 ${Date.now() - t0}ms）`);
   } catch (e) {
+    clearTimeout(timeoutId);
     uncountCall(model);
     emitUsage();
+    if (e.name === 'AbortError') {
+      console.error(`[AI] 超時（${timeoutMs}ms 未回應）`);
+      throw new Error(`AI 超時（${timeoutMs/1000} 秒未回應），請重試或縮短輸入內容`);
+    }
+    console.error('[AI] 網路錯誤：', e);
     throw new Error('網路錯誤：' + e.message);
   }
 
   if (!res.ok) {
     const errText = await res.text();
+    console.error('[AI] API 錯誤回應：', errText);
     let msg = `Google AI API 失敗 (${res.status})`;
     try {
       const j = JSON.parse(errText);
