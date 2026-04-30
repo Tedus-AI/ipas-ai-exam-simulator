@@ -29,6 +29,26 @@ export function init() {
   document.getElementById('examNext').addEventListener('click', () => goto(state.cursor + 1));
   document.getElementById('examSubmit').addEventListener('click', submitExam);
   document.getElementById('examReview').addEventListener('click', showQuestionGrid);
+
+  // 回到設定（中途放棄）
+  document.getElementById('examBackToSetup').addEventListener('click', () => {
+    const answered = state.answers.filter(x => x != null).length;
+    if (answered > 0 && !confirmAction(`已作答 ${answered} 題，確定放棄並回到設定頁？此次作答不會儲存。`)) {
+      return;
+    }
+    backToSetup();
+  });
+}
+
+function backToSetup() {
+  document.getElementById('examRun').hidden = true;
+  document.getElementById('examResult').hidden = true;
+  document.getElementById('examSetup').hidden = false;
+  // 清空題目導覽（如果還顯示著）
+  document.getElementById('examGridWrap')?.remove();
+  state.questions = [];
+  state.answers = [];
+  state.cursor = 0;
 }
 
 async function startExam() {
@@ -122,7 +142,32 @@ function renderQuestion() {
         ${userAns === q.answer
           ? '<span style="color:var(--success);font-weight:500">✓ 答對！</span>'
           : `<span style="color:var(--danger);font-weight:500">✗ 答錯。</span> 正解：${letters[q.answer]}`}
-      </div>` : ''}
+      </div>
+      ${q.explanation ? `
+        <div class="qm-section" style="margin-top:14px">
+          <h3 class="qm-section__title">📝 解析</h3>
+          <p>${esc(q.explanation)}</p>
+        </div>` : ''}
+      ${q.optionsAnalysis?.length ? `
+        <div class="qm-section">
+          <h3 class="qm-section__title">🔍 選項分析</h3>
+          <ul>
+            ${q.optionsAnalysis.map((a, idx) => `
+              <li class="${q.answer === idx ? 'is-correct' : ''}">
+                <strong>${letters[idx]}.</strong> ${esc(a)}
+              </li>`).join('')}
+          </ul>
+        </div>` : ''}
+      ${q.example ? `
+        <div class="qm-section qm-section--ex">
+          <h3 class="qm-section__title">💡 舉例</h3>
+          <p>${esc(q.example)}</p>
+        </div>` : ''}
+      ${(!q.explanation && !q.optionsAnalysis?.length) ? `
+        <div class="muted small" style="margin-top:10px;text-align:center">
+          （這題沒有存解析，可到 Tab 2 重新解析該題或按「📋 複製題目」去問 AI）
+        </div>` : ''}
+    ` : ''}
   `;
 
   card.querySelectorAll('.option').forEach(btn => {
@@ -286,8 +331,11 @@ async function submitExam() {
             </div>` : ''}
           <div class="ai-tools">
             <span class="ai-tools__lbl">${q.explanation ? '另外問 AI：' : '問 AI：'}</span>
+            <button class="ai-btn ai-btn--copy" data-copy-qi="${i}" title="複製題目到剪貼簿（自己貼到任何 AI）">
+              📋 複製題目
+            </button>
             ${AI_PORTALS.map(p => `
-              <button class="ai-btn" data-portal="${p.id}" data-qi="${i}">
+              <button class="ai-btn" data-portal="${p.id}" data-qi="${i}" title="複製題目並開啟 ${p.label}">
                 <span class="ai-btn__icon ${p.cls}">${p.icon}</span>${p.label}
               </button>
             `).join('')}
@@ -307,15 +355,30 @@ async function submitExam() {
     });
   });
 
-  // 綁定 AI 跳轉
-  resultEl.querySelectorAll('.ai-btn').forEach(btn => {
+  // 純複製按鈕（不跳轉）
+  resultEl.querySelectorAll('[data-copy-qi]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const idx = Number(btn.dataset.copyQi);
+      const q = state.questions[idx];
+      const text = composePromptForAI(q);
+      const ok = await copyToClipboard(text);
+      toast(ok ? '✅ 題目已複製，可貼到任何 AI 對話視窗' : '❌ 複製失敗，請手動選取', ok ? 'ok' : 'err', 4000);
+    });
+  });
+
+  // 綁定 AI 跳轉（複製 + 開新分頁）
+  resultEl.querySelectorAll('[data-portal]').forEach(btn => {
     btn.addEventListener('click', async () => {
       const idx = Number(btn.dataset.qi);
       const q = state.questions[idx];
       const portal = AI_PORTALS.find(p => p.id === btn.dataset.portal);
       const text = composePromptForAI(q);
       const ok = await copyToClipboard(text);
-      toast(ok ? '已複製題目到剪貼簿，前往 ' + portal.label + ' 貼上即可' : '複製失敗，仍會跳轉', ok ? 'ok' : 'warn', 3500);
+      if (ok) {
+        toast(`✅ 題目已複製，到 ${portal.label} 後按 Ctrl+V（Mac: Cmd+V）即可貼上`, 'ok', 5500);
+      } else {
+        toast(`❌ 自動複製失敗，請按上方「📋 複製題目」再去 ${portal.label}`, 'err', 5500);
+      }
       window.open(portal.url, '_blank', 'noopener');
     });
   });

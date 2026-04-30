@@ -287,7 +287,7 @@
           <p class="muted small" style="margin-top:12px">考試模式：作答完才公布答案。練習模式：每題作答後立即顯示對錯。</p>
           <div style="margin-top:18px">
             <button class="btn btn--primary btn--lg" id="examStart">
-              <span>開始模擬考</span>
+              <span>開始模擬考 / 練習</span>
               <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M5 12h14M13 5l7 7-7 7"/>
               </svg>
@@ -300,6 +300,7 @@
       <div id="examRun" hidden>
         <div class="exam__bar">
           <div class="exam__meta">
+            <button class="btn btn--ghost btn--sm" id="examBackToSetup" title="回到設定頁（會放棄本次作答）">← 回到設定</button>
             <span class="chip chip--strong" id="examLevelChip">初級</span>
             <span class="chip" id="examSubjChip">科目一</span>
             <span class="muted" id="examProgressTxt">第 1 / 50 題</span>

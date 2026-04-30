@@ -5,7 +5,7 @@ import { extractText, chunkText } from './parser.js';
 import { generateJSON } from './ai.js';
 import {
   addQuestions, countQuestions, clearAllQuestions,
-  exportAll, importAll, listQuestions,
+  exportAll, importAll, listQuestions, deleteQuestion,
 } from './store.js';
 import { PROMPTS } from './config.js';
 import {
@@ -133,7 +133,7 @@ export async function renderBrowser() {
     }
     const letters = ['A','B','C','D'];
     wrap.innerHTML = filtered.map((q, i) => `
-      <div class="qbrow-item" data-i="${i}">
+      <div class="qbrow-item" data-i="${i}" data-id="${esc(q.id)}">
         <div class="qbrow-item__num">${i + 1}</div>
         <div class="qbrow-item__body">
           <div class="qbrow-item__q">${esc(q.question)}</div>
@@ -143,14 +143,41 @@ export async function renderBrowser() {
             ${q.example ? '<span class="has-exp">💡 含舉例</span>' : ''}
           </div>
         </div>
+        <button class="iconbtn iconbtn--del" data-act="del" title="刪除這題" aria-label="刪除這題">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="3 6 5 6 21 6"/>
+            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+            <path d="M10 11v6M14 11v6"/>
+            <path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/>
+          </svg>
+        </button>
         <div class="qbrow-item__chev">›</div>
       </div>
     `).join('');
 
     wrap.querySelectorAll('.qbrow-item').forEach(el => {
-      el.addEventListener('click', () => {
+      // 主體（顯示詳情）— 排除刪除按鈕的點擊
+      el.addEventListener('click', e => {
+        if (e.target.closest('[data-act="del"]')) return;
         const idx = Number(el.dataset.i);
         showQuestionDetail(filtered, idx);
+      });
+      // 刪除按鈕
+      el.querySelector('[data-act="del"]').addEventListener('click', async e => {
+        e.stopPropagation();
+        const id = el.dataset.id;
+        const q = filtered.find(x => x.id === id);
+        if (!q) return;
+        const preview = q.question.slice(0, 40) + (q.question.length > 40 ? '…' : '');
+        if (!confirmAction(`確定刪除這題？\n\n「${preview}」`)) return;
+        try {
+          await deleteQuestion(id);
+          toast('已刪除', 'ok');
+          renderBrowser();
+          refreshStats();
+        } catch (err) {
+          toast('刪除失敗：' + err.message, 'err');
+        }
       });
     });
   } catch (e) {

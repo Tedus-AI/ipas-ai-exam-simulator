@@ -205,6 +205,14 @@ export async function countQuestions() {
   return out;
 }
 
+export async function deleteQuestion(id) {
+  if (_fbStatus === 'connected') {
+    try { await fbApi.deleteDoc(fbApi.doc(_fbDb, 'QuestionBank', id)); }
+    catch (e) { console.warn(e); }
+  }
+  await idbDel('QuestionBank', id);
+}
+
 export async function clearAllQuestions() {
   if (_fbStatus === 'connected') {
     try {
