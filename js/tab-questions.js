@@ -176,7 +176,9 @@ async function analyze() {
       setProgress('questionProgress', 30 + (i / chunks.length) * 60,
         `AI 抽取題目（${i+1} / ${chunks.length}）…`);
       try {
-        const j = await generateJSON(PROMPTS.questions(chunks[i], state.subject));
+        const j = await generateJSON(PROMPTS.questions(chunks[i], state.subject), {
+          timeoutMs: 240_000,   // 4 分鐘：題目 + 詳解輸出量大
+        });
         if (Array.isArray(j.questions)) all.push(...j.questions);
       } catch (e) {
         console.warn('chunk', i, 'failed', e);

@@ -93,6 +93,7 @@ async function analyze() {
       const out = await generate(PROMPTS.material(chunks[i], state.level), {
         temperature: 0.3,
         maxOutputTokens: 8192,
+        timeoutMs: 240_000,   // 4 分鐘：thinking HIGH + Google Search + 長 PDF chunk 可能很慢
       });
       partials.push(out);
     }

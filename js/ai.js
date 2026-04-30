@@ -79,9 +79,10 @@ export async function generate(prompt, opts = {}) {
   recordCall(model);
   emitUsage();
 
-  // ── 90 秒超時保護，避免無限掛起 ──
+  // ── 超時保護，避免無限掛起 ──
+  // 預設 3 分鐘（thinking HIGH + Google Search + 長輸入時 90 秒不夠）
   const controller = new AbortController();
-  const timeoutMs = opts.timeoutMs ?? 90_000;
+  const timeoutMs = opts.timeoutMs ?? 180_000;
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
   console.log(`[AI] 發送請求：model=${model}, json=${useJson}, thinking=${useThinking}, search=${useSearch}, prompt 長度=${prompt.length}`);
