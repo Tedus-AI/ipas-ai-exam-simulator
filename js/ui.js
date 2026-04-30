@@ -49,6 +49,147 @@ export function bindSegmented(container, selector, onChange) {
   });
 }
 
+/* ─── 文字朗讀（Web Speech API） ─── */
+const _synth = (typeof window !== 'undefined') ? window.speechSynthesis : null;
+const _ttsListeners = [];
+
+export function ttsSupported() {
+  return !!_synth;
+}
+export function onTtsChange(fn) { _ttsListeners.push(fn); }
+function emitTts() {
+  if (!_synth) return;
+  const state = { speaking: _synth.speaking, paused: _synth.paused };
+  _ttsListeners.forEach(f => f(state));
+}
+
+export function ttsState() {
+  if (!_synth) return { speaking: false, paused: false };
+  return { speaking: _synth.speaking, paused: _synth.paused };
+}
+
+/**
+ * 朗讀 markdown 內容（自動 strip 標記 + 切句）
+ */
+export function ttsSpeak(markdown, opts = {}) {
+  if (!_synth) {
+    toast('此瀏覽器不支援朗讀功能', 'err');
+    return;
+  }
+  ttsStop(); // 先取消所有
+
+  const text = stripMarkdownForSpeech(markdown);
+  const sentences = splitForSpeech(text);
+  if (!sentences.length) return;
+
+  // 嘗試挑中文女聲（如果有的話）
+  const voices = _synth.getVoices();
+  const preferred = voices.find(v => /zh.*TW|cmn.*Hant/i.test(v.lang)) ||
+                    voices.find(v => /zh|chinese|cmn/i.test(v.lang)) ||
+                    null;
+
+  sentences.forEach((s, i) => {
+    const u = new SpeechSynthesisUtterance(s);
+    u.lang  = 'zh-TW';
+    u.rate  = opts.rate  ?? 1.0;
+    u.pitch = opts.pitch ?? 1.0;
+    u.volume = opts.volume ?? 1.0;
+    if (preferred) u.voice = preferred;
+    // 每段結束時通知 UI（特別是最後一段，整體結束）
+    u.onend = () => emitTts();
+    u.onerror = (e) => { console.warn('[TTS] error:', e); emitTts(); };
+    _synth.speak(u);
+  });
+
+  emitTts();
+
+  // 開始 polling — 因為 paused/resumed 沒有可靠事件，輪詢保持 UI 同步
+  startTtsPolling();
+}
+
+export function ttsPause() {
+  if (_synth?.speaking && !_synth.paused) {
+    _synth.pause();
+    emitTts();
+  }
+}
+export function ttsResume() {
+  if (_synth?.paused) {
+    _synth.resume();
+    emitTts();
+  }
+}
+export function ttsStop() {
+  if (!_synth) return;
+  _synth.cancel();
+  stopTtsPolling();
+  emitTts();
+}
+
+let _ttsPollTimer = null;
+function startTtsPolling() {
+  stopTtsPolling();
+  let lastState = '';
+  _ttsPollTimer = setInterval(() => {
+    if (!_synth) return stopTtsPolling();
+    const cur = `${_synth.speaking}-${_synth.paused}`;
+    if (cur !== lastState) {
+      lastState = cur;
+      emitTts();
+    }
+    if (!_synth.speaking && !_synth.paused) stopTtsPolling();
+  }, 250);
+}
+function stopTtsPolling() {
+  if (_ttsPollTimer) { clearInterval(_ttsPollTimer); _ttsPollTimer = null; }
+}
+
+/** 移除 markdown 語法，避免朗讀時念出 *、#、- 等符號 */
+function stripMarkdownForSpeech(md) {
+  return String(md || '')
+    .replace(/```[\s\S]*?```/g, '')              // code blocks
+    .replace(/`([^`]+)`/g, '$1')                 // inline code
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, '')        // images
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')     // links
+    .replace(/^#+\s*/gm, '')                     // # headers
+    .replace(/\*\*([^*]+)\*\*/g, '$1')           // **bold**
+    .replace(/__([^_]+)__/g, '$1')               // __bold__
+    .replace(/\*([^*]+)\*/g, '$1')               // *italic*
+    .replace(/_([^_]+)_/g, '$1')                 // _italic_
+    .replace(/^[-*+]\s+/gm, '')                  // bullets
+    .replace(/^\d+\.\s+/gm, '')                  // numbered list
+    .replace(/^>\s+/gm, '')                      // blockquote >
+    .replace(/^---+$/gm, '')                     // hr
+    .replace(/\|/g, ' ')                         // table pipes
+    .replace(/[🎯📊🏆📝🔍💡⭐⚠️✓✗✅❌]/g, '')   // emoji 不念
+    .replace(/\s+\n/g, '\n')
+    .replace(/\n{2,}/g, '。\n')                   // 段落變句號停頓
+    .trim();
+}
+
+/** 切成適合朗讀的句子（每段 < 180 字） */
+function splitForSpeech(text) {
+  const out = [];
+  // 先依段落
+  const paras = text.split(/\n+/).filter(p => p.trim());
+  for (const p of paras) {
+    // 段落內依句號類符號切
+    const parts = p.split(/(?<=[。！？.!?；;])/);
+    for (const raw of parts) {
+      const s = raw.trim();
+      if (!s) continue;
+      if (s.length > 180) {
+        // 太長還是要再切
+        const subs = s.match(/.{1,150}[，、,]?/g) || [s];
+        out.push(...subs.map(x => x.trim()).filter(Boolean));
+      } else {
+        out.push(s);
+      }
+    }
+  }
+  return out;
+}
+
 /* ─── A4 閱讀模態 ─── */
 let _readerInited = false;
 export function initReader() {
@@ -67,8 +208,11 @@ export function initReader() {
     if (e.key === 'Escape' && !modal.hidden) closeReader();
   });
 
-  // 列印
-  document.getElementById('readerPrint')?.addEventListener('click', () => window.print());
+  // 列印（先停掉朗讀）
+  document.getElementById('readerPrint')?.addEventListener('click', () => {
+    ttsStop();
+    window.print();
+  });
 
   // 複製全文
   document.getElementById('readerCopy')?.addEventListener('click', async () => {
@@ -76,10 +220,61 @@ export function initReader() {
     const ok = await copyToClipboard(md);
     toast(ok ? '已複製全文' : '複製失敗', ok ? 'ok' : 'err');
   });
+
+  // ── 朗讀控制 ──
+  const ttsBtn  = document.getElementById('readerTts');
+  const rateSel = document.getElementById('readerTtsRate');
+
+  if (!ttsSupported()) {
+    if (ttsBtn) ttsBtn.style.display = 'none';
+    if (rateSel) rateSel.style.display = 'none';
+  } else {
+    // 持久化語速設定
+    const savedRate = localStorage.getItem('ipas.ttsRate');
+    if (savedRate && rateSel) rateSel.value = savedRate;
+    rateSel?.addEventListener('change', () => {
+      localStorage.setItem('ipas.ttsRate', rateSel.value);
+      // 若正在播，重新從頭以新語速播放
+      if (_synth?.speaking) {
+        const md = modal.dataset.markdown || '';
+        ttsSpeak(md, { rate: parseFloat(rateSel.value) });
+      }
+    });
+
+    // 三態按鈕：未開始 → 朗讀；播放中 → 暫停；暫停中 → 繼續
+    ttsBtn?.addEventListener('click', () => {
+      const s = ttsState();
+      if (!s.speaking && !s.paused) {
+        const md = modal.dataset.markdown || '';
+        ttsSpeak(md, { rate: parseFloat(rateSel?.value || '1') });
+      } else if (s.speaking && !s.paused) {
+        ttsPause();
+      } else if (s.paused) {
+        ttsResume();
+      }
+    });
+
+    // 狀態同步：根據 TTS state 改變按鈕外觀
+    onTtsChange(s => {
+      if (!ttsBtn) return;
+      ttsBtn.classList.toggle('is-speaking', s.speaking && !s.paused);
+      if (!s.speaking && !s.paused) {
+        ttsBtn.textContent = '🔊 朗讀';
+      } else if (s.speaking && !s.paused) {
+        ttsBtn.textContent = '⏸ 暫停';
+      } else if (s.paused) {
+        ttsBtn.textContent = '▶ 繼續';
+      }
+    });
+  }
+
+  // 視窗關閉前停止朗讀（避免遺留）
+  window.addEventListener('beforeunload', () => ttsStop());
 }
 
 export function openReader({ title, level, markdown }) {
   initReader();
+  ttsStop();   // 開新內容前先停掉舊的朗讀
   const modal = document.getElementById('readerModal');
   document.getElementById('readerTitle').textContent = title || '教材';
   document.getElementById('readerLevel').textContent = level || '';
@@ -88,6 +283,13 @@ export function openReader({ title, level, markdown }) {
   modal.hidden = false;
   document.body.style.overflow = 'hidden';
 
+  // 重置朗讀按鈕狀態
+  const ttsBtn = document.getElementById('readerTts');
+  if (ttsBtn) {
+    ttsBtn.textContent = '🔊 朗讀';
+    ttsBtn.classList.remove('is-speaking');
+  }
+
   // 捲到最上面
   modal.querySelector('.reader__scroll')?.scrollTo({ top: 0, behavior: 'auto' });
 }
@@ -95,6 +297,7 @@ export function openReader({ title, level, markdown }) {
 export function closeReader() {
   const modal = document.getElementById('readerModal');
   if (!modal) return;
+  ttsStop();   // 關閉時自動停止朗讀
   modal.hidden = true;
   document.body.style.overflow = '';
 }

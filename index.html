@@ -453,6 +453,16 @@
           <h2 class="reader__title" id="readerTitle">教材</h2>
         </div>
         <div class="reader__actions">
+          <div class="tts-ctrl" id="ttsCtrl">
+            <button class="btn btn--ghost btn--sm" id="readerTts" title="朗讀全文">🔊 朗讀</button>
+            <select id="readerTtsRate" class="input input--rate" title="語速">
+              <option value="0.8">0.8×</option>
+              <option value="1" selected>1.0×</option>
+              <option value="1.25">1.25×</option>
+              <option value="1.5">1.5×</option>
+              <option value="1.75">1.75×</option>
+            </select>
+          </div>
           <button class="btn btn--ghost btn--sm" id="readerPrint">列印 / 存 PDF</button>
           <button class="btn btn--ghost btn--sm" id="readerCopy">複製全文</button>
           <button class="iconbtn" id="readerClose" data-close aria-label="關閉">
