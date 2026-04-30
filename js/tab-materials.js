@@ -88,14 +88,25 @@ async function analyze() {
     const partials = [];
 
     for (let i = 0; i < chunks.length; i++) {
-      setProgress('materialProgress', 40 + (i / chunks.length) * 55,
-        `AI 整理中（${i+1} / ${chunks.length}）…`);
-      const out = await generate(PROMPTS.material(chunks[i], state.level), {
-        temperature: 0.3,
-        maxOutputTokens: 8192,
-        timeoutMs: 240_000,   // 4 分鐘：thinking HIGH + Google Search + 長 PDF chunk 可能很慢
-      });
-      partials.push(out);
+      const t0 = Date.now();
+      const basePct = 40 + (i / chunks.length) * 55;
+
+      const tick = setInterval(() => {
+        const sec = Math.floor((Date.now() - t0) / 1000);
+        setProgress('materialProgress', basePct,
+          `AI 整理中 ${i+1}/${chunks.length}（已等待 ${sec} 秒，thinking + 搜尋通常需 1-3 分鐘）`);
+      }, 1000);
+
+      try {
+        const out = await generate(PROMPTS.material(chunks[i], state.level), {
+          temperature: 0.3,
+          maxOutputTokens: 8192,
+          // 預設 10 分鐘 timeout 已足夠
+        });
+        partials.push(out);
+      } finally {
+        clearInterval(tick);
+      }
     }
 
     state.result = partials.join('\n\n---\n\n');

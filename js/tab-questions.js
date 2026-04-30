@@ -169,20 +169,28 @@ async function analyze() {
       setProgress('questionProgress', p * 0.3, msg)
     );
 
-    const chunks = chunkText(text, 60000);
+    // 切小塊（20K 字 ≈ 5-8 題），每次呼叫快、即使失敗也只丟一小段
+    const chunks = chunkText(text, 20000);
     const all = [];
 
     for (let i = 0; i < chunks.length; i++) {
-      setProgress('questionProgress', 30 + (i / chunks.length) * 60,
-        `AI 抽取題目（${i+1} / ${chunks.length}）…`);
+      const t0 = Date.now();
+      // 用計時器讓使用者知道還在跑
+      const tick = setInterval(() => {
+        const sec = Math.floor((Date.now() - t0) / 1000);
+        setProgress('questionProgress',
+          30 + (i / chunks.length) * 60,
+          `AI 抽取題目 ${i+1}/${chunks.length}（已等待 ${sec} 秒…）`);
+      }, 1000);
+
       try {
-        const j = await generateJSON(PROMPTS.questions(chunks[i], state.subject), {
-          timeoutMs: 240_000,   // 4 分鐘：題目 + 詳解輸出量大
-        });
+        const j = await generateJSON(PROMPTS.questions(chunks[i], state.subject));
         if (Array.isArray(j.questions)) all.push(...j.questions);
       } catch (e) {
         console.warn('chunk', i, 'failed', e);
-        toast(`第 ${i+1} 段解析失敗，已跳過：${e.message}`, 'warn', 4000);
+        toast(`第 ${i+1} 段解析失敗，已跳過：${e.message}`, 'warn', 4500);
+      } finally {
+        clearInterval(tick);
       }
     }
 

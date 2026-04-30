@@ -79,10 +79,10 @@ export async function generate(prompt, opts = {}) {
   recordCall(model);
   emitUsage();
 
-  // ── 超時保護，避免無限掛起 ──
-  // 預設 3 分鐘（thinking HIGH + Google Search + 長輸入時 90 秒不夠）
+  // ── 超時保護（避免網路斷掉時無限掛著），預設 10 分鐘 ──
+  // Gemma + thinking HIGH + Google Search + 大量輸出可能超過 5 分鐘
   const controller = new AbortController();
-  const timeoutMs = opts.timeoutMs ?? 180_000;
+  const timeoutMs = opts.timeoutMs ?? 600_000;
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
   console.log(`[AI] 發送請求：model=${model}, json=${useJson}, thinking=${useThinking}, search=${useSearch}, prompt 長度=${prompt.length}`);
