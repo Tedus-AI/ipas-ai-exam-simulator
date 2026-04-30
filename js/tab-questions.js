@@ -4,9 +4,10 @@
 import { extractText, chunkText } from './parser.js';
 import { generateJSON } from './ai.js';
 import {
-  addQuestions, countQuestions, clearAllQuestions,
+  addQuestions, countQuestions,
   exportAll, importAll, listQuestions, deleteQuestion,
 } from './store.js';
+import { requireUnlock } from './security.js';
 import { PROMPTS } from './config.js';
 import {
   bindDropzone, setProgress, toast, bindSegmented,
@@ -43,7 +44,10 @@ export function init() {
     document.getElementById('questionAnalyze').disabled = false;
   });
 
-  document.getElementById('questionAnalyze').addEventListener('click', analyze);
+  document.getElementById('questionAnalyze').addEventListener('click', async () => {
+    if (!await requireUnlock('解析考題並寫入題庫需要解鎖')) return;
+    analyze();
+  });
 
   // 題庫管理
   document.getElementById('qbExport').addEventListener('click', async () => {
@@ -60,21 +64,19 @@ export function init() {
   document.getElementById('qbImportFile').addEventListener('change', async e => {
     const f = e.target.files?.[0];
     if (!f) return;
+    if (!await requireUnlock('匯入 JSON 到資料庫需要解鎖')) {
+      e.target.value = '';
+      return;
+    }
     try {
       const text = await f.text();
       const data = JSON.parse(text);
       const result = await importAll(data);
       toast(`匯入完成：題目 ${result.questions} 筆，教材 ${result.materials} 份`, 'ok');
       refreshStats();
+      renderBrowser();
     } catch (err) { toast('匯入失敗：' + err.message, 'err'); }
     finally { e.target.value = ''; }
-  });
-
-  document.getElementById('qbClear').addEventListener('click', async () => {
-    if (!confirmAction('確定清空所有題庫？此動作無法復原。')) return;
-    await clearAllQuestions();
-    toast('題庫已清空', 'ok');
-    refreshStats();
   });
 
   // 題庫瀏覽器：級別 / 科目切換
@@ -170,6 +172,7 @@ export async function renderBrowser() {
         if (!q) return;
         const preview = q.question.slice(0, 40) + (q.question.length > 40 ? '…' : '');
         if (!confirmAction(`確定刪除這題？\n\n「${preview}」`)) return;
+        if (!await requireUnlock('刪除題目需要解鎖')) return;
         try {
           await deleteQuestion(id);
           toast('已刪除', 'ok');

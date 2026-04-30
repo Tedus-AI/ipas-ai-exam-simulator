@@ -54,6 +54,9 @@
           <span class="conn__led"></span>
           <span class="conn__txt">未設定</span>
         </span>
+        <button id="btnLock" class="iconbtn iconbtn--lock" aria-label="安全鎖" title="點擊解鎖 / 上鎖">
+          <span id="btnLockIcon">🔒</span>
+        </button>
         <button id="btnSettings" class="iconbtn" aria-label="設定">
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="3"/>
@@ -216,7 +219,6 @@
           <div class="card__head-actions">
             <button class="btn btn--ghost btn--sm" id="qbExport">匯出 JSON</button>
             <button class="btn btn--ghost btn--sm" id="qbImport">匯入 JSON</button>
-            <button class="btn btn--ghost btn--sm btn--danger" id="qbClear">清空題庫</button>
           </div>
         </div>
         <div class="stats">
@@ -397,6 +399,23 @@
         <button class="btn btn--primary" id="settingsSave">儲存設定</button>
       </footer>
     </aside>
+  </div>
+
+  <!-- ============== 安全鎖 modal ============== -->
+  <div class="lock" id="lockModal" hidden>
+    <div class="lock__backdrop" data-close></div>
+    <div class="lock__panel" role="dialog" aria-label="安全鎖">
+      <div class="lock__icon">🔒</div>
+      <h2 class="lock__title">解鎖以繼續</h2>
+      <p class="lock__reason muted small" id="lockReason">此動作需要解鎖</p>
+      <input type="password" id="lockInput" class="input" placeholder="輸入密碼" autocomplete="current-password" />
+      <p class="lock__err" id="lockErr"></p>
+      <div class="lock__actions">
+        <button class="btn btn--ghost" id="lockCancel">取消</button>
+        <button class="btn btn--primary" id="lockOk">解鎖</button>
+      </div>
+      <p class="muted small" style="margin-top:12px;text-align:center">解鎖後在本次瀏覽期間有效，關掉分頁就會回到上鎖狀態。</p>
+    </div>
   </div>
 
   <!-- ============== 題目詳解 modal ============== -->

@@ -9,6 +9,7 @@ import {
 import { initFirebase, firebaseStatus, getFirebaseProjectId } from './store.js';
 import * as ai from './ai.js';
 import { RATE_LIMITS } from './rateLimit.js';
+import { isUnlocked, lock, requireUnlock, onLockChange } from './security.js';
 import * as tabMaterials from './tab-materials.js';
 import * as tabQuestions from './tab-questions.js';
 import * as tabExam     from './tab-exam.js';
@@ -18,6 +19,7 @@ async function boot() {
   initTheme();
   initDrawer();
   initSettingsForm();
+  initLockButton();
 
   initTabs(tab => {
     if (tab === 'questions') tabQuestions.refreshStats();
@@ -167,6 +169,30 @@ function initSettingsForm() {
   if (localStorage.getItem(STORAGE_KEYS.fbConfig)) {
     localStorage.removeItem(STORAGE_KEYS.fbConfig);
   }
+}
+
+// ── 鎖頭按鈕 ──
+function initLockButton() {
+  const btn = document.getElementById('btnLock');
+  const icon = document.getElementById('btnLockIcon');
+  if (!btn) return;
+  function refresh() {
+    const u = isUnlocked();
+    icon.textContent = u ? '🔓' : '🔒';
+    btn.title = u ? '已解鎖（點擊重新上鎖）' : '已上鎖（點擊輸入密碼解鎖）';
+    btn.classList.toggle('is-unlocked', u);
+  }
+  btn.addEventListener('click', async () => {
+    if (isUnlocked()) {
+      lock();
+      toast('已重新上鎖', 'ok', 2000);
+    } else {
+      const ok = await requireUnlock('輸入密碼以解鎖');
+      if (ok) toast('🔓 已解鎖，本次瀏覽期間有效', 'ok', 2500);
+    }
+  });
+  onLockChange(refresh);
+  refresh();
 }
 
 // ── 用量面板渲染 ──

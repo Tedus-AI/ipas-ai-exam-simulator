@@ -11,6 +11,7 @@ import {
   openReader,
 } from './ui.js';
 import { LEVELS } from './config.js';
+import { requireUnlock } from './security.js';
 
 let state = {
   level: 'junior',
@@ -55,6 +56,7 @@ export function init() {
   });
   document.getElementById('materialSave').addEventListener('click', async () => {
     if (!state.result) return;
+    if (!await requireUnlock('儲存教材到資料庫需要解鎖')) return;
     try {
       const title = state.file?.name?.replace(/\.[^.]+$/, '') || '未命名教材';
       await saveMaterial({ level: state.level, title, content: state.result });
@@ -162,6 +164,7 @@ export async function refreshList() {
       });
       el.querySelector('[data-act="del"]').addEventListener('click', async () => {
         if (!confirmAction(`確定刪除「${item.title}」？`)) return;
+        if (!await requireUnlock('刪除教材需要解鎖')) return;
         await deleteMaterial(id);
         toast('已刪除', 'ok');
         refreshList();
