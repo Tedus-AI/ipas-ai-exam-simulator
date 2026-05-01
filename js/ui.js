@@ -188,9 +188,10 @@ function stopTtsPolling() {
   if (_ttsPollTimer) { clearInterval(_ttsPollTimer); _ttsPollTimer = null; }
 }
 
-/** 移除 markdown 語法，避免朗讀時念出 *、#、- 等符號 */
+/** 移除 markdown 語法，避免朗讀時念出 *、#、-、/ 等符號 */
 function stripMarkdownForSpeech(md) {
-  return String(md || '')
+  let s = cleanLatex(String(md || ''));   // 先轉掉 LaTeX
+  return s
     .replace(/```[\s\S]*?```/g, '')              // code blocks
     .replace(/`([^`]+)`/g, '$1')                 // inline code
     .replace(/!\[[^\]]*\]\([^)]*\)/g, '')        // images
@@ -206,8 +207,15 @@ function stripMarkdownForSpeech(md) {
     .replace(/^---+$/gm, '')                     // hr
     .replace(/\|/g, ' ')                         // table pipes
     .replace(/[🎯📊🏆📝🔍💡⭐⚠️✓✗✅❌]/g, '')   // emoji 不念
+    // ── 念起來突兀的符號 ──
+    .replace(/\s*\/\s*/g, '、')                  // / → 改念「、」(自然停頓)
+    .replace(/\\/g, '')                          // 反斜線去掉
+    .replace(/[~^]/g, '')                        // 波浪、上標符號
+    .replace(/§/g, '第')                         // § → 念「第」
+    .replace(/[(（](.+?)[)）]/g, ' $1 ')         // 括號內容自然朗讀（去括號）
     .replace(/\s+\n/g, '\n')
     .replace(/\n{2,}/g, '。\n')                   // 段落變句號停頓
+    .replace(/\s{2,}/g, ' ')                     // 多餘空白
     .trim();
 }
 
@@ -540,10 +548,55 @@ export function setProgress(elId, percent, text) {
   if (text != null) el.querySelector('.progress__txt').textContent = text;
 }
 
+/* ─── LaTeX 數學符號 → Unicode（防止 AI 偶爾輸出 LaTeX） ─── */
+const LATEX_MAP = [
+  [/\\rightarrow|\\to/g, '→'],
+  [/\\leftarrow|\\gets/g, '←'],
+  [/\\Rightarrow/g, '⇒'],
+  [/\\Leftarrow/g, '⇐'],
+  [/\\leftrightarrow/g, '↔'],
+  [/\\uparrow/g, '↑'],
+  [/\\downarrow/g, '↓'],
+  [/\\neq/g, '≠'],
+  [/\\geq|\\ge/g, '≥'],
+  [/\\leq|\\le/g, '≤'],
+  [/\\approx/g, '≈'],
+  [/\\pm/g, '±'],
+  [/\\mp/g, '∓'],
+  [/\\times/g, '×'],
+  [/\\div/g, '÷'],
+  [/\\cdot/g, '·'],
+  [/\\infty/g, '∞'],
+  [/\\sum/g, '∑'],
+  [/\\prod/g, '∏'],
+  [/\\int/g, '∫'],
+  [/\\partial/g, '∂'],
+  [/\\nabla/g, '∇'],
+  [/\\sqrt/g, '√'],
+  [/\\alpha/g, 'α'], [/\\beta/g, 'β'], [/\\gamma/g, 'γ'], [/\\delta/g, 'δ'],
+  [/\\epsilon/g, 'ε'], [/\\theta/g, 'θ'], [/\\lambda/g, 'λ'], [/\\mu/g, 'μ'],
+  [/\\pi/g, 'π'], [/\\sigma/g, 'σ'], [/\\phi/g, 'φ'], [/\\omega/g, 'ω'],
+];
+
+/** 把 $...$ / $$...$$ 包裝去掉，把 LaTeX 命令轉 Unicode */
+export function cleanLatex(text) {
+  if (!text) return text;
+  let out = String(text);
+  // 先處理 $...$ 內的內容（保留內容、移掉 $）
+  out = out.replace(/\$\$([^$]+)\$\$/g, '$1');
+  out = out.replace(/\$([^$\n]+)\$/g, '$1');
+  // 套用所有 LaTeX → Unicode 對應
+  for (const [pattern, replace] of LATEX_MAP) {
+    out = out.replace(pattern, replace);
+  }
+  return out;
+}
+
 /* ─── Markdown 安全渲染 ─── */
 export function renderMarkdown(md) {
   if (!window.marked || !window.DOMPurify) return md;
-  const html = window.marked.parse(md, { gfm: true, breaks: true });
+  const cleaned = cleanLatex(md);
+  const html = window.marked.parse(cleaned, { gfm: true, breaks: true });
   return window.DOMPurify.sanitize(html);
 }
 

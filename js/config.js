@@ -6,24 +6,12 @@ export const STORAGE_KEYS = {
   geminiModel: 'ipas.geminiModel',
   fbConfig:    'ipas.fbConfig',
   theme:       'ipas.theme',
-  // Azure Speech TTS（雲端神經語音）
   azureKey:    'ipas.azureKey',
   azureRegion: 'ipas.azureRegion',
   azureVoice:  'ipas.azureVoice',
 };
 
-// Azure Speech zh-TW 神經語音清單
-export const AZURE_VOICES = [
-  { id: 'zh-TW-HsiaoChenNeural', label: '曉臻（女・年輕清亮）' },
-  { id: 'zh-TW-HsiaoYuNeural',   label: '曉雨（女・溫柔親切）' },
-  { id: 'zh-TW-YunJheNeural',    label: '雲哲（男・沉穩標準）' },
-  { id: 'zh-TW-PeiJunNeural',    label: '佩君（女・新聞主播感）' },
-];
-
-// ── 內建 Firebase 設定 ──────────────────────────────
-// Web API Key 不是密鑰（見 https://firebase.google.com/docs/projects/api-keys ），
-// 安全完全靠 Firestore Rules，所以直接打包進前端是 OK 的。
-// 使用者若想串自己的專案，可以在「設定」抽屜貼上 JSON 蓋掉預設。
+// ── 內建 Firebase 設定 ──
 export const DEFAULT_FIREBASE_CONFIG = {
   apiKey: "AIzaSyArw6eEWZD5cS4g4p5q0pSIte0GECeRHGo",
   authDomain: "ipas-ai-exam-simulator.firebaseapp.com",
@@ -32,6 +20,17 @@ export const DEFAULT_FIREBASE_CONFIG = {
   messagingSenderId: "37375272595",
   appId: "1:37375272595:web:029d2d32028657dadb0f66"
 };
+
+// Azure Speech 中文神經語音清單
+export const AZURE_VOICES = [
+  { id: 'zh-TW-HsiaoChenNeural', label: '曉臻（女・年輕清亮）',     locale: 'zh-TW' },
+  { id: 'zh-TW-HsiaoYuNeural',   label: '曉雨（女・溫柔親切）',     locale: 'zh-TW' },
+  { id: 'zh-TW-YunJheNeural',    label: '雲哲（男・沉穩標準）',     locale: 'zh-TW' },
+  { id: 'zh-CN-XiaoxiaoNeural',  label: '曉曉（女・最受歡迎）',     locale: 'zh-CN' },
+  { id: 'zh-CN-YunxiNeural',     label: '雲希（男・溫暖陽光）',     locale: 'zh-CN' },
+  { id: 'zh-CN-YunjianNeural',   label: '雲健（男・新聞播報）',     locale: 'zh-CN' },
+  { id: 'zh-CN-XiaoyiNeural',    label: '曉伊（女・活潑可愛）',     locale: 'zh-CN' },
+];
 
 export const LEVELS = {
   junior:       { id: 'junior',       label: '初級' },
@@ -43,7 +42,6 @@ export const SUBJECTS = {
   2: { id: 2, label: '科目二 · 生成式 AI 應用與規劃' },
 };
 
-// 4 大 AI 平台跳轉設定
 export const AI_PORTALS = [
   { id: 'gpt',    label: 'ChatGPT', url: 'https://chatgpt.com/',           cls: 'ai-btn__icon--gpt',    icon: 'G' },
   { id: 'gemini', label: 'Gemini',  url: 'https://gemini.google.com/',     cls: 'ai-btn__icon--gemini', icon: 'G' },
@@ -51,49 +49,69 @@ export const AI_PORTALS = [
   { id: 'grok',   label: 'Grok',    url: 'https://x.com/i/grok',           cls: 'ai-btn__icon--grok',   icon: 'X' },
 ];
 
-// 及格邏輯
 export const PASS_RULE = {
-  averageMin:   70,   // 兩科平均 ≥ 70
-  perSubjectMin: 60,  // 任一科 ≥ 60
+  averageMin:   70,
+  perSubjectMin: 60,
 };
 
 // AI Prompt 模板
 export const PROMPTS = {
-  // 教材整理：結合練習題反向分析出題邏輯
+
+  // 教材整理：詳細、保留原文舉例、結合命題分析
   material(text, level) {
     const levelLabel = LEVELS[level]?.label ?? '初級';
-    return `你是 iPAS AI 應用規劃師（${levelLabel}）的資深備考助手。
-這份教材是 iPAS 官方學習指引，特色是「每個小節結尾通常附有練習題或自我評量」。
-這些練習題是出題委員的命題思路指標 —— 反向分析它們，能直接推測正式考試的出題邏輯。
+    return `你是 iPAS AI 應用規劃師（${levelLabel}）的資深備考助教。
+這份教材是 iPAS 官方學習指引，每個小節結尾通常附有練習題。
+請整理為一份**忠於原文、含命題分析、適合自學閱讀**的學習筆記。
 
-請仔細閱讀以下教材，產出一份**整合命題分析**的結構化學習筆記。
+# ⚠️ 嚴格輸出規則
 
-# 整理規則
+## 不要使用 LaTeX 數學語法
+- ❌ 禁止：\`$\\rightarrow$\`、\`$\\neq$\`、\`$\\geq$\`、\`$x^2$\`、\`$\\sqrt{x}$\`
+- ✅ 改用：\`→\`、\`≠\`、\`≥\`、\`x^2\`、\`sqrt(x)\`、\`pi\`
+- 一律用 Unicode 符號或純文字，不要任何 \`$\` 包裝
 
-## 1. 結構
-- 使用 Markdown，依教材章節層級組織（\`##\` 為大章節、\`###\` 為小節）。
-- 每個重點以 bullet 列出，避免冗長段落。
+## 結構
+- 使用 Markdown，依教材章節層級組織（\`##\` 大章節、\`###\` 小節）
+- 每個重點以 bullet 列出
 
-## 2. 識別練習題並逆推出題邏輯
-- 識別教材中每個小節結尾的「練習題 / 自我評量 / 範例題」段落。
-- 練習題出現的核心概念，請在筆記中對應的 bullet 後標註 \`🎯 考點\`。
-- 該 bullet 之後另起一行縮排，加註「（**出題角度**：說明這個觀念如何被考、可能用什麼題型測驗）」。
+# 📋 內容要求（**最重要：詳細、不要過度濃縮**）
 
-## 3. 每個大章節結尾必加：### 📊 出題邏輯分析
-針對該章節的練習題，整理：
-- **題型分布**：定義題 / 應用題 / 比較題 / 計算題 / 情境判斷題 / 流程順序題 等，標註比例。
-- **命題重點**：哪些觀念最常被考、哪些細節容易設計成選項陷阱。
-- **易混淆點**：容易混淆的相近概念對照（例如 監督式 vs 非監督式、過擬合 vs 欠擬合）。
-- **預測命題方向**：依練習題的傾向，推測正式考試可能延伸的考法。
+## 1. 名詞解釋必須完整
+- 凡是出現的專有名詞、英文縮寫、技術用語：
+  - 保留原文 + **附中文解釋**（如 \`Fine-tuning（微調）：用少量領域資料二次訓練既有模型\`）
+  - **若原文有舉例 → 必須保留並寫進筆記**（不要省略）
+  - **若原文有對比/類比 → 也要保留**
 
-## 4. 細節要求
-- 專有名詞、英文縮寫請保留原文並附中文解釋（如 \`Fine-tuning（微調）\`）。
-- 公式或數學符號一律純文字格式（如 \`x^2, sqrt(x), pi\`）。
-- 不要包含圖片描述、頁碼、版權聲明、目錄等無意義內容。
-- 若某個小節沒有練習題，不需勉強分析，正常整理重點即可。
+## 2. 保留原文的具體案例與情境
+- 教材中提到的「實務案例」「範例情境」「業界應用」**全部保留**
+- 不要因為想壓縮字數而略過例子 — 例子比定義更重要
+- 若原文用一個故事/流程說明概念，整段保留改寫，不要只留結論
 
-## 5. 結尾必加：## 🏆 考前重點摘要
-列出 8–12 個最容易考的觀念，每項標註對應章節（如 \`(§1.2)\`），並用一句話點出考點精髓。
+## 3. 條列細節
+- 不要只寫「方法：A、B、C」，要寫「方法 A：定義 + 用法 + 例子；方法 B：...」
+- 每個 bullet **可以兩三句話完整說明**，不要單句空泛
+
+## 4. 識別練習題並逆推出題邏輯
+- 識別每個小節結尾的「練習題 / 自我評量」段落
+- 練習題出現的核心概念，在筆記中對應 bullet 後標註 \`🎯 考點\`
+- 該 bullet 之後另起一行加註「（**出題角度**：說明這個觀念如何被考、可能用什麼題型）」
+
+## 5. 每個大章節結尾必加：### 📊 出題邏輯分析
+- **題型分布**：定義題 / 應用題 / 比較題 / 計算題 / 情境判斷題等
+- **命題重點**：哪些觀念最常被考、哪些細節容易設計成選項陷阱
+- **易混淆點**：相近概念對照（例如 監督式 vs 非監督式）
+- **預測命題方向**：依練習題傾向推測延伸考法
+
+## 6. 結尾必加：## 🏆 考前重點摘要
+- 8–12 個最容易考的觀念
+- 每項標註對應章節（如 \`(§1.2)\`）+ 一句話點出考點精髓
+
+# 🚫 不要做這些
+- 不要包含圖片描述、頁碼、版權聲明、目錄等無意義內容
+- 不要使用 LaTeX 語法（看上方規則）
+- 不要用斜線符號 \`/\` 取代「或」「與」（朗讀會被讀出來）
+- **不要省略原文舉例** — 寧可詳細也不要簡略
 
 # 教材內容
 """
@@ -107,13 +125,14 @@ ${text}
     return `你是 iPAS AI 應用規劃師（${subjLabel}）的資深備考助教。
 以下是歷屆試題原文，包含題目、四個選項、與答案。
 
-請把每一題抽取為結構化資料，**並為每題生成完整的解析教學**。
+請把每一題抽取為結構化資料，**並為每題生成完整解析**。
 
 ⚠️ **重要：你的整個回應必須是、且只能是一個合法的 JSON 物件**。
 - 不要包含任何前後說明文字
 - 不要使用 markdown code fence（不要 \`\`\`json 或 \`\`\`）
 - 不要在 JSON 之外加任何字
 - 第一個字元必須是 \`{\`，最後一個字元必須是 \`}\`
+- **不要使用 LaTeX 語法**（不要 \`$\\rightarrow$\`、\`$\\neq$\`），改用 Unicode（→ ≠）
 
 JSON 格式：
 {
@@ -140,25 +159,23 @@ JSON 格式：
 ## exp（整體解析）
 - 至少 2-3 句完整說明
 - 點出題目核心考點與對應章節觀念
-- 說明為何正解是 X（從觀念推導，而非只說「答案是 X」）
+- 說明為何正解是 X（從觀念推導，不只說「答案是 X」）
 
 ## opts（每選項分析）
 - 4 個字串陣列，**每個選項都要分析**（包含正解）
 - 正解：說明為何符合題意、為何是最佳答案
 - 錯誤選項：點出錯在哪（事實錯誤？範圍偏差？常見誤解？陷阱字眼？）
-- 用「✗ 錯誤原因」「✓ 正確之處」等明確標記
 
 ## ex（舉例 / 情境）
 - 選填，但若能舉例請務必加上
-- 舉一個實務情境、業界案例、或具體數字例子
-- 用比喻或類比加深印象
+- 用實務情境、業界案例、或具體數字例子加深印象
 
 # 細節要求
-- "a" 為正解索引（A=0, B=1, C=2, D=3），原文沒答案時設 null。
-- 數學符號用純文字（x^2, sqrt(x), pi）。
-- 跳過範例題、附錄、目錄、頁碼、版權聲明。
-- 移除原始的 (A)(B)(C)(D) 標記，"o" 只放純文字內容。
-- 如果完全找不到題目，輸出 {"subject": ${subject}, "questions": []}。
+- "a" 為正解索引（A=0, B=1, C=2, D=3），原文沒答案時設 null
+- 數學符號用純文字（x^2, sqrt(x), pi）
+- 跳過範例題、附錄、目錄、頁碼、版權聲明
+- 移除原始的 (A)(B)(C)(D) 標記
+- 完全找不到題目時輸出 {"subject": ${subject}, "questions": []}
 
 # 原始文字
 """

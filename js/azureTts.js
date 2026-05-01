@@ -173,7 +173,9 @@ async function synthesize(text, { voice, rate = 1, key, region, signal }) {
   const url = `https://${region}.tts.speech.microsoft.com/cognitiveservices/v1`;
   const ratePct = Math.round((rate - 1) * 100);
   const ratePart = ratePct === 0 ? '' : ` rate="${ratePct >= 0 ? '+' : ''}${ratePct}%"`;
-  const ssml = `<speak version='1.0' xml:lang='zh-TW' xmlns:mstts='https://www.w3.org/2001/mstts'>
+  // 從 voice id 抽 locale（zh-TW-HsiaoChenNeural → zh-TW）
+  const locale = (voice.match(/^([a-z]{2}-[A-Z]{2})/) || [])[1] || 'zh-TW';
+  const ssml = `<speak version='1.0' xml:lang='${locale}' xmlns:mstts='https://www.w3.org/2001/mstts'>
 <voice name='${voice}'>${ratePart ? `<prosody${ratePart}>` : ''}${escapeXml(text)}${ratePart ? '</prosody>' : ''}</voice>
 </speak>`;
 
@@ -205,8 +207,23 @@ function escapeXml(s) {
 }
 
 /* ───── 文字處理 ───── */
+// LaTeX 命令對應（與 ui.js 同步）
+const LATEX_MAP = [
+  [/\\rightarrow|\\to/g, '到'], [/\\leftarrow|\\gets/g, '至'],
+  [/\\Rightarrow/g, '導致'],    [/\\Leftarrow/g, '由'],
+  [/\\neq/g, '不等於'], [/\\geq|\\ge/g, '大於等於'], [/\\leq|\\le/g, '小於等於'],
+  [/\\approx/g, '約等於'], [/\\pm/g, '正負'], [/\\times/g, '乘以'], [/\\div/g, '除以'],
+  [/\\cdot/g, '點'], [/\\infty/g, '無限大'], [/\\sqrt/g, '根號'],
+  [/\\(alpha|beta|gamma|delta|epsilon|theta|lambda|mu|pi|sigma|phi|omega)/g, ''],
+];
+
 function stripMarkdown(md) {
-  return String(md || '')
+  let s = String(md || '');
+  // LaTeX 包裝去除 + 替換成中文唸法
+  s = s.replace(/\$\$([^$]+)\$\$/g, '$1').replace(/\$([^$\n]+)\$/g, '$1');
+  for (const [p, r] of LATEX_MAP) s = s.replace(p, r);
+
+  return s
     .replace(/```[\s\S]*?```/g, '')
     .replace(/`([^`]+)`/g, '$1')
     .replace(/!\[[^\]]*\]\([^)]*\)/g, '')
@@ -222,8 +239,14 @@ function stripMarkdown(md) {
     .replace(/^---+$/gm, '')
     .replace(/\|/g, ' ')
     .replace(/[🎯📊🏆📝🔍💡⭐⚠️✓✗✅❌]/g, '')
+    .replace(/\s*\/\s*/g, '、')               // / → 唸「、」
+    .replace(/\\/g, '')                       // 反斜線移除
+    .replace(/[~^]/g, '')
+    .replace(/§/g, '第')
+    .replace(/[(（](.+?)[)）]/g, ' $1 ')
     .replace(/\s+\n/g, '\n')
     .replace(/\n{2,}/g, '。\n')
+    .replace(/\s{2,}/g, ' ')
     .trim();
 }
 
