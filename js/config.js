@@ -6,7 +6,19 @@ export const STORAGE_KEYS = {
   geminiModel: 'ipas.geminiModel',
   fbConfig:    'ipas.fbConfig',
   theme:       'ipas.theme',
+  // Azure Speech TTS（雲端神經語音）
+  azureKey:    'ipas.azureKey',
+  azureRegion: 'ipas.azureRegion',
+  azureVoice:  'ipas.azureVoice',
 };
+
+// Azure Speech zh-TW 神經語音清單
+export const AZURE_VOICES = [
+  { id: 'zh-TW-HsiaoChenNeural', label: '曉臻（女・年輕清亮）' },
+  { id: 'zh-TW-HsiaoYuNeural',   label: '曉雨（女・溫柔親切）' },
+  { id: 'zh-TW-YunJheNeural',    label: '雲哲（男・沉穩標準）' },
+  { id: 'zh-TW-PeiJunNeural',    label: '佩君（女・新聞主播感）' },
+];
 
 // ── 內建 Firebase 設定 ──────────────────────────────
 // Web API Key 不是密鑰（見 https://firebase.google.com/docs/projects/api-keys ），

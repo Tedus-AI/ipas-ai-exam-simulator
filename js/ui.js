@@ -49,29 +49,70 @@ export function bindSegmented(container, selector, onChange) {
   });
 }
 
-/* ─── 文字朗讀（Web Speech API） ─── */
+/* ─── 文字朗讀：智慧切換 Azure（雲端神經語音）↔ Web Speech（瀏覽器內建） ─── */
+import * as azure from './azureTts.js';
+
 const _synth = (typeof window !== 'undefined') ? window.speechSynthesis : null;
 const _ttsListeners = [];
 
+// 是否使用 Azure（每次 ttsSpeak 時即時判斷）
+let _useAzure = false;
+
 export function ttsSupported() {
-  return !!_synth;
+  return !!_synth || azure.isConfigured();
+}
+export function ttsUsesCloud() {
+  return azure.isConfigured();
 }
 export function onTtsChange(fn) { _ttsListeners.push(fn); }
+
 function emitTts() {
-  if (!_synth) return;
-  const state = { speaking: _synth.speaking, paused: _synth.paused };
+  let state;
+  if (_useAzure) {
+    const a = azure.azureState().state;
+    state = { speaking: a !== 'idle', paused: a === 'paused', cloud: true };
+  } else if (_synth) {
+    state = { speaking: _synth.speaking, paused: _synth.paused, cloud: false };
+  } else {
+    state = { speaking: false, paused: false, cloud: false };
+  }
   _ttsListeners.forEach(f => f(state));
 }
 
+// 監聽 Azure 狀態變化
+azure.onAzureTtsChange(() => emitTts());
+
 export function ttsState() {
-  if (!_synth) return { speaking: false, paused: false };
-  return { speaking: _synth.speaking, paused: _synth.paused };
+  if (_useAzure) {
+    const a = azure.azureState().state;
+    return { speaking: a !== 'idle', paused: a === 'paused', cloud: true };
+  }
+  if (!_synth) return { speaking: false, paused: false, cloud: false };
+  return { speaking: _synth.speaking, paused: _synth.paused, cloud: false };
 }
 
 /**
  * 朗讀 markdown 內容（自動 strip 標記 + 切句）
+ * 有 Azure 金鑰 → 用 Azure 神經語音；否則用 Web Speech
  */
 export function ttsSpeak(markdown, opts = {}) {
+  // 切換引擎：每次重新判斷
+  _useAzure = azure.isConfigured();
+
+  if (_useAzure) {
+    azure.azureSpeak(markdown, opts).catch(e => {
+      console.error('[TTS] Azure 失敗，回退瀏覽器:', e);
+      toast('Azure 朗讀失敗：' + e.message + '\n已切回瀏覽器內建語音', 'warn', 5000);
+      _useAzure = false;
+      webSpeechSpeak(markdown, opts);
+    });
+    return;
+  }
+
+  webSpeechSpeak(markdown, opts);
+}
+
+function webSpeechSpeak(markdown, opts = {}) {
   if (!_synth) {
     toast('此瀏覽器不支援朗讀功能', 'err');
     return;
@@ -108,20 +149,23 @@ export function ttsSpeak(markdown, opts = {}) {
 }
 
 export function ttsPause() {
+  if (_useAzure) { azure.azurePause(); return; }
   if (_synth?.speaking && !_synth.paused) {
     _synth.pause();
     emitTts();
   }
 }
 export function ttsResume() {
+  if (_useAzure) { azure.azureResume(); return; }
   if (_synth?.paused) {
     _synth.resume();
     emitTts();
   }
 }
 export function ttsStop() {
-  if (!_synth) return;
-  _synth.cancel();
+  // 兩個引擎都停（避免殘留）
+  azure.azureStop();
+  if (_synth) _synth.cancel();
   stopTtsPolling();
   emitTts();
 }

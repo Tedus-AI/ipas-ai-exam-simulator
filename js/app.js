@@ -10,6 +10,7 @@ import { initFirebase, firebaseStatus, getFirebaseProjectId } from './store.js';
 import * as ai from './ai.js';
 import { RATE_LIMITS } from './rateLimit.js';
 import { isUnlocked, lock, requireUnlock, onLockChange } from './security.js';
+import * as azureTts from './azureTts.js';
 import * as tabMaterials from './tab-materials.js';
 import * as tabQuestions from './tab-questions.js';
 import * as tabExam     from './tab-exam.js';
@@ -169,6 +170,65 @@ function initSettingsForm() {
   if (localStorage.getItem(STORAGE_KEYS.fbConfig)) {
     localStorage.removeItem(STORAGE_KEYS.fbConfig);
   }
+
+  // ── Azure TTS 設定 ──
+  initAzureForm();
+}
+
+function initAzureForm() {
+  const keyEl    = document.getElementById('azureKey');
+  const regionEl = document.getElementById('azureRegion');
+  const voiceEl  = document.getElementById('azureVoice');
+  const testBtn  = document.getElementById('azureTest');
+  const resetBtn = document.getElementById('azureReset');
+  if (!keyEl) return;
+
+  // 載入既有
+  keyEl.value    = localStorage.getItem(STORAGE_KEYS.azureKey)    || '';
+  regionEl.value = localStorage.getItem(STORAGE_KEYS.azureRegion) || 'eastasia';
+  voiceEl.value  = localStorage.getItem(STORAGE_KEYS.azureVoice)  || 'zh-TW-HsiaoChenNeural';
+
+  // 自動儲存（有變更就存）
+  function saveAzure() {
+    const k = keyEl.value.trim();
+    if (k) localStorage.setItem(STORAGE_KEYS.azureKey, k);
+    else   localStorage.removeItem(STORAGE_KEYS.azureKey);
+    localStorage.setItem(STORAGE_KEYS.azureRegion, regionEl.value);
+    localStorage.setItem(STORAGE_KEYS.azureVoice,  voiceEl.value);
+  }
+  keyEl.addEventListener('change',   saveAzure);
+  regionEl.addEventListener('change', saveAzure);
+  voiceEl.addEventListener('change',  saveAzure);
+
+  // 試聽連線
+  testBtn?.addEventListener('click', async () => {
+    saveAzure();
+    if (!keyEl.value.trim()) {
+      toast('請先填入 Azure 金鑰', 'warn');
+      return;
+    }
+    testBtn.disabled = true;
+    testBtn.textContent = '測試中…';
+    try {
+      await azureTts.testAzureKey();
+      // 直接念一句確認聲音
+      await azureTts.azureSpeak('哈囉，這是 Azure 神經語音的測試訊息，聽起來如何？');
+      toast('✅ Azure 連線成功，正在播放測試語音', 'ok', 4000);
+    } catch (e) {
+      console.error(e);
+      toast('❌ Azure 連線失敗：' + e.message, 'err', 6000);
+    } finally {
+      testBtn.disabled = false;
+      testBtn.textContent = '🔊 試聽連線';
+    }
+  });
+
+  // 清除
+  resetBtn?.addEventListener('click', () => {
+    keyEl.value = '';
+    localStorage.removeItem(STORAGE_KEYS.azureKey);
+    toast('已清除 Azure 金鑰，朗讀將回到瀏覽器內建', 'ok', 3000);
+  });
 }
 
 // ── 鎖頭按鈕 ──

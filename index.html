@@ -384,6 +384,39 @@
         </section>
 
         <section class="settings-section">
+          <h3 class="h3">雲端朗讀（Azure TTS · 選用）</h3>
+          <p class="muted small">填寫後 Tab 1 教材閱讀的 🔊 朗讀會用 Azure 神經語音（音質接近 Siri）。留空 = 使用瀏覽器內建語音。免費版 F0 = 50 萬字/月。</p>
+          <div class="field">
+            <label class="field__label" for="azureKey">訂閱金鑰</label>
+            <input id="azureKey" type="password" class="input" placeholder="貼上 Azure Speech 金鑰" autocomplete="off" />
+          </div>
+          <div class="field">
+            <label class="field__label" for="azureRegion">區域</label>
+            <select id="azureRegion" class="input">
+              <option value="eastasia">East Asia（東亞 / 香港）</option>
+              <option value="japaneast">Japan East（日本東部）</option>
+              <option value="southeastasia">Southeast Asia（東南亞 / 新加坡）</option>
+              <option value="westus">West US</option>
+              <option value="westus2">West US 2</option>
+              <option value="eastus">East US</option>
+            </select>
+          </div>
+          <div class="field">
+            <label class="field__label" for="azureVoice">預設語者</label>
+            <select id="azureVoice" class="input">
+              <option value="zh-TW-HsiaoChenNeural">曉臻（女・年輕清亮）</option>
+              <option value="zh-TW-HsiaoYuNeural">曉雨（女・溫柔親切）</option>
+              <option value="zh-TW-YunJheNeural">雲哲（男・沉穩標準）</option>
+              <option value="zh-TW-PeiJunNeural">佩君（女・新聞主播感）</option>
+            </select>
+          </div>
+          <div class="row">
+            <button class="btn btn--ghost btn--sm" id="azureTest">🔊 試聽連線</button>
+            <button class="btn btn--ghost btn--sm btn--danger" id="azureReset">清除設定</button>
+          </div>
+        </section>
+
+        <section class="settings-section">
           <h3 class="h3">外觀</h3>
           <div class="field">
             <label class="field__label">主題</label>
