@@ -185,6 +185,11 @@ function parseJsonLoose(text) {
   try { return JSON.parse(text); } catch {}
   const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '').trim();
   try { return JSON.parse(cleaned); } catch {}
+  const arr = cleaned.match(/\[[\s\S]*\]/);
+  if (arr) {
+    try { return JSON.parse(arr[0]); }
+    catch (e) { throw new Error('AI 回傳的 JSON 格式異常：' + e.message); }
+  }
   const m = cleaned.match(/\{[\s\S]*\}/);
   if (m) {
     try { return JSON.parse(m[0]); }
