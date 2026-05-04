@@ -217,9 +217,19 @@ async function analyze() {
         const j = await generateJSON(PROMPTS.questions(chunks[i], state.subject));
         clearInterval(tick);
 
-        if (Array.isArray(j.questions) && j.questions.length) {
+        // 三重容錯：取 questions 陣列
+        // 1) {questions: [...]}（標準）
+        // 2) [...]（純陣列，generateJSON 已 normalize 但保留防線）
+        // 3) {data: [...]} 或其他偏離（盡量救）
+        const questions =
+          (Array.isArray(j?.questions) && j.questions) ||
+          (Array.isArray(j) && j) ||
+          (Array.isArray(j?.data) && j.data) ||
+          [];
+
+        if (questions.length) {
           // 規範化這一塊的題目
-          const chunkParsed = j.questions.map(q => ({
+          const chunkParsed = questions.map(q => ({
             level: state.level,
             subject: state.subject,
             question: String(q.q || '').trim(),
